@@ -219,9 +219,18 @@ function normalizeInterpretationStatus(value, fallback = "stated") {
   return ["stated", "inferred_from_context", "external_context"].includes(value) ? value : fallback;
 }
 
-const VOICE_TYPES = ["direct_speech", "internal_thought", "free_indirect_discourse", "reported_speech", "narrator_description", "character_judgment"];
+const VOICE_TYPES = [
+  "direct_speech", "reported_speech", "reported_speech_summary",
+  "internal_thought", "free_indirect_discourse", "free_indirect_question", "free_indirect_rationalization",
+  "focalized_perception", "narrator_description", "ominous_narration",
+  "character_judgment", "nonverbal_countervoice", "avoidance_focus",
+];
 function normalizeVoiceType(value) {
   return VOICE_TYPES.includes(value) ? value : "internal_thought";
+}
+const VOICE_STATUS = ["stated", "inferred_from_context", "inferred_from_style", "inferred_from_effect", "external_context"];
+function normalizeVoiceStatus(value) {
+  return VOICE_STATUS.includes(value) ? value : "inferred_from_context";
 }
 
 function titleForOutput(output, text) {
@@ -561,7 +570,7 @@ async function extract(text, mode) {
       tone: v.tone || null,
       function: v.function || null,
       attach_to: attachTo,
-      interpretation_status: normalizeInterpretationStatus(v.interpretation_status, "inferred_from_context"),
+      interpretation_status: normalizeVoiceStatus(v.interpretation_status),
       ...ground(text, quote),
     };
   }).filter((v) => v.quote).slice(0, 40);

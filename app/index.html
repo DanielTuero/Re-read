@@ -4,6 +4,8 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Re-read - reading lens</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
   :root{
     --bg:#f7f6f1;
@@ -91,7 +93,7 @@
   .run-id{ margin-left:8px; font:11px/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:var(--soft); text-transform:none; letter-spacing:0; }
 
   #mode-badge{ font-weight:700; text-transform:uppercase; letter-spacing:.05em; font-size:10.5px; padding:3px 8px; border-radius:999px; background:#eee; color:#555; display:none; }
-  .tabs{ display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); gap:0; border-bottom:1px solid var(--line); background:var(--surface-2); }
+  .tabs{ display:grid; grid-template-columns:repeat(9,minmax(0,1fr)); gap:0; border-bottom:1px solid var(--line); background:var(--surface-2); }
   .tab{ border:0; border-right:1px solid var(--line); border-radius:0; color:var(--muted); background:transparent; min-height:42px; padding:0 6px; }
   .tab:last-child{ border-right:0; }
   .tab.active{ color:var(--ink); background:var(--surface); box-shadow:inset 0 -2px 0 var(--accent); }
@@ -153,6 +155,17 @@
   .context-note p{ margin:0; font-size:14px; line-height:1.45; }
   .context-actions{ display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
   .context-actions a{ display:inline-flex; align-items:center; min-height:34px; padding:8px 11px; border:1px solid var(--line); border-radius:8px; color:var(--ink); background:var(--surface); text-decoration:none; font-size:13px; }
+  .places-grid{ display:grid; grid-template-columns:minmax(220px,300px) minmax(0,1fr); gap:14px; align-items:start; }
+  .places-list{ display:grid; gap:8px; max-height:540px; overflow:auto; }
+  .place-item{ width:100%; text-align:left; border:1px solid var(--line); border-left:5px solid #2f6f9e; border-radius:8px; background:#fffefa; padding:10px; cursor:pointer; display:grid; gap:4px; }
+  .place-item.active{ border-color:#2f6f9e; background:#eef4fb; }
+  .place-item strong{ font-size:14px; line-height:1.25; }
+  .place-geo{ color:var(--soft); font-size:11px; }
+  .place-exp{ color:var(--muted); font-size:12.5px; line-height:1.4; }
+  .place-map-wrap{ position:relative; }
+  #place-map{ height:540px; border:1px solid var(--line); border-radius:8px; z-index:0; background:#e9e6dd; }
+  .map-note{ color:var(--soft); font-size:12px; margin-top:6px; }
+  .leaflet-popup-content{ font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
 
   .flow-toolbar{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; }
   .flow-title{ font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; font-weight:720; }
@@ -228,7 +241,9 @@
     .pane{ height:auto; min-height:360px; }
     .runs-card{ max-height:260px; }
     .pane.source{ max-height:42vh; }
-    .tabs{ grid-template-columns:repeat(8,minmax(78px,1fr)); overflow:auto; }
+    .tabs{ grid-template-columns:repeat(9,minmax(78px,1fr)); overflow:auto; }
+    .places-grid{ grid-template-columns:1fr; }
+    #place-map{ height:340px; }
     .argument-grid{ grid-template-columns:1fr; }
     .audit-grid{ grid-template-columns:1fr 1fr; }
     .context-grid{ grid-template-columns:1fr; }
@@ -299,6 +314,7 @@
       <nav class="tabs" aria-label="Passage map views">
         <button class="tab active" data-tab="understand">Understand</button>
         <button class="tab" data-tab="context">Context</button>
+        <button class="tab" data-tab="places">Places</button>
         <button class="tab" data-tab="argument">Argument</button>
         <button class="tab" data-tab="evidence">Evidence</button>
         <button class="tab" data-tab="voice">Voice</button>
@@ -309,6 +325,7 @@
       <div class="panel-shell">
         <section class="tab-panel active" id="tab-understand"></section>
         <section class="tab-panel" id="tab-context"></section>
+        <section class="tab-panel" id="tab-places"></section>
         <section class="tab-panel" id="tab-argument"></section>
         <section class="tab-panel" id="tab-evidence"></section>
         <section class="tab-panel" id="tab-voice"></section>
@@ -352,9 +369,27 @@ const ROLE_COLORS = {
 };
 const EDGE_COLORS = { supports:"#2f8a5e", contradicts:"#c0392b", causes:"#2f6f9e", explains:"#8a887f", exemplifies:"#8a887f", qualifies:"#b8860b", then:"#5a86b5", foreshadows:"#a85fb0", reveals:"#2f8a5e", motivates:"#b8860b", contrasts:"#c0392b", enables:"#2f8a5e", requires:"#b8860b", contextualizes:"#6b4fbb", triggers:"#b84832", interrupts:"#b84832", rationalizes:"#b5701f", avoids:"#a85d8a", fails_to_resolve:"#6b4fbb", leaves_unresolved:"#6b4fbb", undercuts:"#c0392b", undercut_by:"#c0392b", depends_on:"#b8860b", residual_concern:"#6b4fbb" };
 const MODE_COLORS = { argument:"#6b4fbb", narrative:"#2f6f5e", explanatory:"#b5701f" };
-const VOICE_COLORS = { direct_speech:"#b5701f", internal_thought:"#2f6f9e", free_indirect_discourse:"#6b4fbb", reported_speech:"#6f6b62", narrator_description:"#8b8377", character_judgment:"#b84832" };
+const VOICE_COLORS = {
+  direct_speech:"#b5701f", reported_speech:"#6f6b62", reported_speech_summary:"#8a7a52",
+  internal_thought:"#2f6f9e", free_indirect_discourse:"#6b4fbb", free_indirect_question:"#5a4fb0", free_indirect_rationalization:"#7a4fb0",
+  focalized_perception:"#2f8aa8", narrator_description:"#8b8377", ominous_narration:"#9a5a2a",
+  character_judgment:"#b84832", nonverbal_countervoice:"#a83a5a", avoidance_focus:"#a85d8a"
+};
 function voiceColor(t){ return VOICE_COLORS[t] || "#6b6a64"; }
-function voiceTypeLabel(t){ const m={ direct_speech:"Direct speech", internal_thought:"Internal thought", free_indirect_discourse:"Free indirect", reported_speech:"Reported speech", narrator_description:"Narration", character_judgment:"Character judgment" }; return m[t] || t || "Voice"; }
+function voiceTypeLabel(t){
+  const m={ direct_speech:"Direct speech", reported_speech:"Reported speech", reported_speech_summary:"Reported (summary)", internal_thought:"Internal thought", free_indirect_discourse:"Free indirect", free_indirect_question:"Free indirect question", free_indirect_rationalization:"Free indirect rationalization", focalized_perception:"Focalized perception", narrator_description:"Narration", ominous_narration:"Ominous narration", character_judgment:"Character judgment", nonverbal_countervoice:"Nonverbal countervoice", avoidance_focus:"Avoidance focus" };
+  return m[t] || (t ? t.replace(/_/g," ") : "Voice");
+}
+const VOICE_SPEECHY=new Set(["direct_speech","reported_speech","reported_speech_summary"]);
+const VOICE_NARRATION=new Set(["narrator_description","ominous_narration"]);
+const VOICE_HARD_UNDERLINE=new Set(["character_judgment","nonverbal_countervoice"]);
+function voiceStyle(t){
+  const c=voiceColor(t);
+  if(VOICE_SPEECHY.has(t)) return `background:${c}22;box-shadow:inset 0 -2px 0 ${c};`;
+  if(VOICE_NARRATION.has(t)) return `background:${c}1c;`;
+  if(VOICE_HARD_UNDERLINE.has(t)) return `background:${c}1c;border-bottom:2px solid ${c};`;
+  return `background:${c}14;border-bottom:2px dashed ${c};`;
+}
 function speakerInitials(name){ const parts=String(name||"?").trim().split(/\s+/); return ((parts[0]?.[0]||"")+(parts.length>1?parts[parts.length-1][0]:"")).toUpperCase() || "?"; }
 const DASHED  = new Set(["contradicts","contrasts","foreshadows","qualifies","fails_to_resolve","leaves_unresolved","undercuts","undercut_by","residual_concern"]);
 const TENSION_TYPES = new Set(["contradicts","contrasts","qualifies","foreshadows","fails_to_resolve","leaves_unresolved","undercuts","undercut_by","residual_concern"]);
@@ -375,6 +410,8 @@ const NS = "http://www.w3.org/2000/svg";
 let RAW="", DATA=null, N=[], E=[], byId={}, SPINE=[], sel=null, activeTab="understand";
 let RUNS=[], CURRENT_RUN=null, CTX=[], contextById={}, attachedContextIds=new Set(), selectedContextId=null;
 let VOICE=[], voiceById={}, voiceOverlay=false, selectedVoiceId=null;
+let placeMap=null, placeMarkers={}, placesLoadedRun=null;
+const geoCache={};
 let svg, vp, VW=600, VH=460, raf=0;
 const view = { s:1, x:0, y:0 };
 
@@ -522,6 +559,8 @@ function build(data, run=null){
 
   renderUnderstand();
   renderContext();
+  resetPlaceMap();
+  renderPlaces();
   renderArgument();
   renderEvidence();
   renderVoice();
@@ -642,7 +681,7 @@ function renderSource(selected=null){
     html+=esc(RAW.slice(pos, range.source_start));
     const text=esc(RAW.slice(range.source_start, range.source_end));
     if(range.type==="selected") html+=`<mark>${text}</mark>`;
-    else if(range.type==="voice") html+=`<button class="voice-mark voice-${attr(range.voice_type)} ${range.id===selectedVoiceId?'active':''}" data-voice="${attr(range.id)}" title="${attr(range.label + ' — ' + (voiceById[range.id]?.function || voiceTypeLabel(range.voice_type)))}">${text}</button>`;
+    else if(range.type==="voice") html+=`<button class="voice-mark ${range.id===selectedVoiceId?'active':''}" data-voice="${attr(range.id)}" style="${voiceStyle(range.voice_type)}" title="${attr(voiceTypeLabel(range.voice_type) + ' · ' + range.label + (voiceById[range.id]?.function ? ' — ' + voiceById[range.id].function : ''))}">${text}</button>`;
     else html+=`<button class="context-mark ${range.id===selectedContextId?'active':''}" data-context="${attr(range.id)}" title="${attr(range.label)}">${text}</button>`;
     pos=range.source_end;
   }
@@ -797,6 +836,88 @@ function contextDetail(entity){
 
 function bindContextButtons(root){
   root.querySelectorAll("[data-context]").forEach(btn=>btn.addEventListener("click",()=>selectContext(btn.dataset.context)));
+}
+
+// ---- places / map --------------------------------------------------------
+function placeEntities(){
+  return CTX.filter(entity=> entity.kind==="place" || (entity.map_query && entity.kind!=="ship" && entity.kind!=="person" && entity.kind!=="technical_term"));
+}
+function renderPlaces(){
+  const places=placeEntities();
+  if(!places.length){
+    $("tab-places").innerHTML = `<article class="reading-card"><h3>Places</h3><p class="empty">No locations were extracted for this passage.</p></article>`;
+    return;
+  }
+  const list=places.map(entity=>`
+    <button class="place-item ${entity.id===selectedContextId?'active':''}" data-place="${attr(entity.id)}">
+      <strong>${esc(entity.label)}</strong>
+      <span class="place-geo" id="geo-${attr(entity.id)}">locating…</span>
+      <span class="place-exp">${esc(entity.explanation || "")}</span>
+    </button>`).join("");
+  $("tab-places").innerHTML = `
+    <div class="places-grid">
+      <div class="places-list">${list}</div>
+      <div class="place-map-wrap"><div id="place-map"></div><div class="map-note" id="map-note"></div></div>
+    </div>`;
+  $("tab-places").querySelectorAll("[data-place]").forEach(btn=>btn.addEventListener("click",()=>focusPlace(btn.dataset.place)));
+}
+function resetPlaceMap(){
+  if(placeMap){ try{ placeMap.remove(); }catch{} }
+  placeMap=null; placeMarkers={}; placesLoadedRun=null;
+}
+function ensurePlaceMap(){
+  if(placeMap) return placeMap;
+  if(typeof L==="undefined" || !$("place-map")) return null;
+  placeMap=L.map("place-map",{ scrollWheelZoom:true, attributionControl:true }).setView([43.296,5.37],11);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{ maxZoom:19, attribution:"© OpenStreetMap" }).addTo(placeMap);
+  return placeMap;
+}
+async function geocode(q){
+  if(geoCache[q]!==undefined) return geoCache[q];
+  try{
+    const res=await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`,{ headers:{ "Accept":"application/json" } });
+    const arr=await res.json();
+    geoCache[q]= (Array.isArray(arr) && arr[0]) ? { lat:+arr[0].lat, lon:+arr[0].lon, display:arr[0].display_name } : null;
+  }catch{ geoCache[q]=null; }
+  return geoCache[q];
+}
+async function loadPlaceMap(){
+  const map=ensurePlaceMap();
+  const note=$("map-note");
+  if(!map){ if(note) note.textContent="Map could not load (offline or blocked)."; return; }
+  setTimeout(()=>map.invalidateSize(),60);
+  const runKey=CURRENT_RUN?.id || ("len"+RAW.length);
+  if(placesLoadedRun===runKey) return;
+  placesLoadedRun=runKey;
+  Object.values(placeMarkers).forEach(m=>{ try{ map.removeLayer(m); }catch{} }); placeMarkers={};
+  const places=placeEntities(); const pts=[]; let found=0;
+  for(const entity of places){
+    let g=await geocode(entity.map_query || entity.label);
+    if(!g && entity.map_query && entity.label && entity.map_query!==entity.label){
+      await new Promise(r=>setTimeout(r,1100));
+      g=await geocode(entity.label);
+    }
+    const geoEl=$("geo-"+entity.id);
+    if(g){
+      const marker=L.marker([g.lat,g.lon]).addTo(map).bindPopup(`<b>${esc(entity.label)}</b><br>${esc(entity.explanation || "")}`);
+      marker.on("click",()=>{ selectedContextId=entity.id; if(entity.source_start!=null) renderSource({ source_start:entity.source_start, source_end:entity.source_end }); markActivePlace(entity.id); });
+      placeMarkers[entity.id]=marker; pts.push([g.lat,g.lon]); found++;
+      if(geoEl) geoEl.textContent = g.display ? g.display.split(",").slice(0,2).join(",").trim() : "on map";
+    } else if(geoEl){ geoEl.textContent="not found on map"; }
+    await new Promise(r=>setTimeout(r,1100));
+  }
+  if(pts.length) map.fitBounds(pts,{ padding:[34,34], maxZoom:13 });
+  if(note) note.textContent = found ? `${found} of ${places.length} location${places.length===1?"":"s"} placed. Markers geocoded via OpenStreetMap.` : "None of these places could be located on the map.";
+}
+function markActivePlace(id){
+  document.querySelectorAll("#tab-places .place-item").forEach(el=>el.classList.toggle("active", el.dataset.place===id));
+}
+function focusPlace(id){
+  const entity=contextById[id]; if(!entity) return;
+  selectedContextId=id; markActivePlace(id);
+  if(entity.source_start!=null) renderSource({ source_start:entity.source_start, source_end:entity.source_end });
+  const marker=placeMarkers[id];
+  if(marker && placeMap){ placeMap.setView(marker.getLatLng(), Math.max(placeMap.getZoom(),13)); marker.openPopup(); }
 }
 
 async function toggleAttachContext(id){
@@ -1293,6 +1414,7 @@ function setActiveTab(tab, refit=true){
   document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active", b.dataset.tab===tab));
   document.querySelectorAll(".tab-panel").forEach(p=>p.classList.toggle("active", p.id==="tab-"+tab));
   if(tab==="graph" && refit) requestAnimationFrame(()=>{ measure(); fitView(); applyEdgeFilter(); });
+  if(tab==="places") requestAnimationFrame(()=>loadPlaceMap());
 }
 function toggleFull(){
   const p=$("map-pane"); p.classList.toggle("expanded");

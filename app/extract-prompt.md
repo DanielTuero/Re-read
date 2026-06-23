@@ -50,11 +50,18 @@ STEP 6 — Extract CONTEXTUAL ENTITIES / TERMS:
   - map_query: a short map/search query for places when useful, otherwise null.
 - Do not introduce a named identity that is not stated in the passage. If the passage says "a young man" but does not name him, label it "the young man", not an outside name.
 
-STEP 7 — Extract the CHARACTER VOICE layer (who says, thinks, or judges what):
-- Capture not only direct spoken dialogue but ALSO internal thought, free indirect discourse, reported speech, and character judgments. For fiction this is often the most revealing layer.
-- voice_type is one of: direct_speech, internal_thought, free_indirect_discourse, reported_speech, narrator_description, character_judgment.
-  - free_indirect_discourse is the narrator voicing a character's thoughts without quotation marks (e.g. "no, he was being stupid").
-  - character_judgment matters a lot: an opinion or evaluation a character makes (e.g. "if he'd had a sister like that ...") reveals personality, bias, and subtext. Do not flatten it into plain narration.
+STEP 7 — Extract the CHARACTER VOICE layer (who speaks, thinks, perceives, judges, narrates, or resists):
+- Extract ALL voice events, not only direct quotes. A voice event is ANY span where the passage reveals who is speaking, thinking, perceiving, judging, narrating, or resisting another character's interpretation. Be generous — fiction is dense with voice. Aim for 6–14 events in a rich literary passage, not 1.
+- The single most important category is FOCALIZED narration: third-person prose psychologically filtered through a character. "the first sign of something peculiar" is not neutral — it is the event seen through the character's eyes. "It must have been a trick of the light" is the character's defensive mind entering the narration.
+- voice_type is one of: direct_speech, reported_speech, reported_speech_summary, internal_thought, free_indirect_discourse, free_indirect_question, free_indirect_rationalization, focalized_perception, narrator_description, ominous_narration, character_judgment, nonverbal_countervoice, avoidance_focus.
+  - reported_speech_summary: speech described but not quoted ("Mrs. Dursley gossiped away happily").
+  - free_indirect_question / free_indirect_rationalization: the character's own question or self-justification entering the narration without quotes.
+  - focalized_perception: a neutral-seeming description that is actually the character's perception.
+  - ominous_narration: narrator signalling something strange to the reader before characters notice.
+  - nonverbal_countervoice: a wordless action that silently resists a character's interpretation ("It stared back.").
+  - avoidance_focus: a character deliberately redirecting attention to suppress something.
+- DO NOT collapse multiple voice functions into one event. If a sentence contains a self-question AND a rationalizing answer, split them into two events. "What could he have been thinking of? It must have been a trick of the light." → one free_indirect_question + one free_indirect_rationalization.
+- interpretation_status may be: stated, inferred_from_context, inferred_from_style, inferred_from_effect.
 - For each voice event:
   - speaker: the character whose voice it is. Use only a name stated in the passage; otherwise a description like "the man". Use "Narrator" for narrator_description.
   - quote: the exact verbatim words from the passage.
