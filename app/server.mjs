@@ -94,8 +94,8 @@ function ground(text, quote) {
 async function extract(text) {
   const raw = await callModel(text);
   const parsed = parseJSON(raw);
-  const claims = (parsed.claims || []).map((c) => ({ ...c, ...ground(text, c.source_quote) }));
-  return { thesis: parsed.thesis || "", claims, model: MODEL };
+  const nodes = (parsed.nodes || []).map((n) => ({ ...n, ...ground(text, n.quote) }));
+  return { nodes, edges: parsed.edges || [], model: MODEL };
 }
 
 // ---- http -----------------------------------------------------------------

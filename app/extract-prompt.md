@@ -1,26 +1,39 @@
-You convert a piece of text into its argument structure. You extract the author's CLAIMS as nodes — not a summary, not a list of topics or entities, but the load-bearing propositions and how they hang together.
+You convert a piece of text into a WEB of connected ideas. Each node is a unit of the argument, tagged by the ROLE it plays in the text. Edges show how the ideas connect. This is not a summary and not a flat list — it is a map of structure.
 
 Return ONLY a single JSON object, no prose, no markdown fence:
 
 {
-  "thesis": "one sentence: the single main claim the whole text is arguing",
-  "claims": [
-    {
-      "id": "c1",
-      "text": "a sharp paraphrase of the claim, 12 words or fewer",
-      "role": "thesis" | "claim",
-      "parent_id": null,
-      "relation_to_parent": null | "supports" | "tension",
-      "source_quote": "a VERBATIM substring copied exactly from the input text"
-    }
+  "nodes": [
+    { "id": "n1", "label": "a sharp paraphrase, 8 words or fewer", "role": "<role>", "quote": "a VERBATIM substring copied exactly from the input text" }
+  ],
+  "edges": [
+    { "from": "n1", "to": "n2", "type": "<type>" }
   ]
 }
 
-Rules:
-- Identify the single main thesis. Include it as the first claim with role "thesis", parent_id null, relation_to_parent null.
-- Extract the 4–7 MOST load-bearing supporting claims (role "claim"). Prefer fewer, sharper claims over many vague ones.
-- Nest claims 1–2 levels using parent_id: a claim may support the thesis or another claim. Build a tree, not a flat list.
-- relation_to_parent is "supports" for normal support, or "tension" when the claim is a caveat, hedge, qualification, limitation, concession, or counter-point the author raises. Tension nodes are the differentiator — surface the stuff a summary would smooth over.
-- "text" is YOUR short paraphrase (<= 12 words).
-- "source_quote" MUST be copied EXACTLY, character for character, from the input text — one sentence or clause is ideal. This is used to locate the claim in the original, so it must be a literal substring. Never paraphrase the quote, never combine non-adjacent fragments.
-- Every claim needs a source_quote. If you cannot find a verbatim quote, do not emit the claim.
+ROLES (the part each node plays in the text):
+- thesis        — the single main claim, IF the text clearly argues one
+- claim         — a supporting or sub-claim
+- evidence      — data, study, fact, or example offered as proof
+- counterpoint  — an opposing position or objection the text raises
+- assumption    — something taken for granted, often unstated
+- definition    — a term being defined or characterized
+- cause         — something presented as a cause
+- consequence   — an effect or implication
+- background    — context or framing, not itself argued
+
+EDGE TYPES (how one node connects to another, directed from -> to):
+- supports     — from gives reason to believe to
+- contradicts  — from opposes / conflicts with to
+- causes        — from leads to to
+- explains     — from clarifies or accounts for to
+- elaborates   — from expands on to
+- exemplifies  — from is an instance of to
+- qualifies    — from limits or hedges to
+
+RULES:
+- 5–12 nodes. Capture the REAL structure, including disagreement.
+- If the text presents two OPPOSING positions, create a node for EACH and join them with a "contradicts" edge. Do NOT invent a synthesis or "balance" thesis that the text does not actually state. If there is no single thesis, simply omit the thesis role — a web with two opposing claims is correct.
+- Build a CONNECTED graph: most nodes should have at least one edge. Edges are the point — show how evidence attaches to claims, how counterpoints oppose them, how causes lead to consequences.
+- "label" is YOUR short paraphrase (<= 8 words).
+- "quote" MUST be copied EXACTLY, character for character, from the input text (one sentence or clause). It is used to locate the node in the original. Never paraphrase the quote. Every node needs one.
