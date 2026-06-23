@@ -2,7 +2,11 @@
 // Re-read logic adjudicator eval harness.
 // Usage:
 //   ANTHROPIC_API_KEY=sk-... node run-eval.mjs [--model claude-sonnet-4-6] [--limit N]
+//   GEMINI_API_KEY=...      node run-eval.mjs --model gemini-3.1-flash-lite
 //   node run-eval.mjs --dry        # validate dataset + self-test the scorer, no API calls
+//
+// Provider is auto-detected from the model name (gemini* -> Google, else Anthropic),
+// or forced with --provider gemini|anthropic.
 //
 // Tests the CLASSIFICATION CORE of the logic contract (logic-contract.md steps 2-5):
 // can the adjudicator separate supports / scope_mismatch / same_topic_no_relation /
@@ -18,6 +22,7 @@ const args = process.argv.slice(2);
 const DRY = args.includes("--dry");
 const MODEL = argVal("--model") || "claude-sonnet-4-6";
 const LIMIT = Number(argVal("--limit") || 0);
+const PROVIDER = argVal("--provider") || (/^gemini/i.test(MODEL) ? "gemini" : "anthropic");
 
 function argVal(flag) {
   const i = args.indexOf(flag);
@@ -60,7 +65,17 @@ function loadCases() {
 }
 
 // ---- model call ----------------------------------------------------------
+function userMsg(c) {
+  return `Claim A: "${c.claim_a}"\nClaim B: "${c.claim_b}"`;
+}
+
 async function adjudicate(systemPrompt, c) {
+  return PROVIDER === "gemini"
+    ? adjudicateGemini(systemPrompt, c)
+    : adjudicateAnthropic(systemPrompt, c);
+}
+
+async function adjudicateAnthropic(systemPrompt, c) {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -72,12 +87,32 @@ async function adjudicate(systemPrompt, c) {
       model: MODEL,
       max_tokens: 1024,
       system: systemPrompt,
-      messages: [{ role: "user", content: `Claim A: "${c.claim_a}"\nClaim B: "${c.claim_b}"` }],
+      messages: [{ role: "user", content: userMsg(c) }],
     }),
   });
   if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
   const data = await res.json();
   const text = (data.content || []).map((b) => b.text || "").join("");
+  return parseJSON(text);
+}
+
+async function adjudicateGemini(systemPrompt, c) {
+  const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "x-goog-api-key": key, "content-type": "application/json" },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      contents: [{ role: "user", parts: [{ text: userMsg(c) }] }],
+      generationConfig: { maxOutputTokens: 1024, temperature: 0, responseMimeType: "application/json" },
+    }),
+  });
+  if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
+  const data = await res.json();
+  const cand = (data.candidates || [])[0];
+  const text = ((cand && cand.content && cand.content.parts) || []).map((p) => p.text || "").join("");
+  if (!text) throw new Error(`empty response: ${JSON.stringify(data).slice(0, 300)}`);
   return parseJSON(text);
 }
 
@@ -206,12 +241,16 @@ function dryRun(cases) {
 
   if (DRY) return dryRun(cases);
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    console.error("ANTHROPIC_API_KEY not set. Use --dry to validate the harness without API calls.");
+  const keyName = PROVIDER === "gemini" ? "GEMINI_API_KEY" : "ANTHROPIC_API_KEY";
+  const haveKey = PROVIDER === "gemini"
+    ? !!(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY)
+    : !!process.env.ANTHROPIC_API_KEY;
+  if (!haveKey) {
+    console.error(`${keyName} not set. Use --dry to validate the harness without API calls.`);
     process.exit(2);
   }
 
-  console.log(`Running ${cases.length} cases against ${MODEL} ...`);
+  console.log(`Running ${cases.length} cases against ${MODEL} (provider: ${PROVIDER}) ...`);
   const preds = [];
   for (const c of cases) {
     try {

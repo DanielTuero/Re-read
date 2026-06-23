@@ -28,7 +28,14 @@ node run-eval.mjs --dry
 ANTHROPIC_API_KEY=sk-ant-... node run-eval.mjs
 ANTHROPIC_API_KEY=sk-ant-... node run-eval.mjs --model claude-opus-4-8   # establish the ceiling
 ANTHROPIC_API_KEY=sk-ant-... node run-eval.mjs --limit 5                 # quick smoke test
+
+# Google Gemini (provider auto-detected from model name; needs the Gemini API
+# enabled on the key's Cloud project):
+GEMINI_API_KEY=... node run-eval.mjs --model gemini-3.1-flash-lite
 ```
+
+Provider is auto-detected (`gemini*` → Google, else Anthropic) or forced with
+`--provider gemini|anthropic`. Pass the key only via the environment variable — never hardcode it.
 
 Exit code is `0` on PASS, `1` on FAIL — so it drops straight into CI later.
 
