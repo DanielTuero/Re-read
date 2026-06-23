@@ -268,18 +268,105 @@ output). The eval set + a fresh-context adjudicator are the defense.
 
 ---
 
-## The canonical primitive
+## 11. Adjudication pipeline (execution order)
+
+The contract above says *what* a valid relation must contain. This is *how* the adjudicator
+produces one — and the order is load-bearing. The model must **check whether two claims can even
+be legally compared before classifying how they relate.** Classifying relation before checking
+scope is backwards and is the #1 source of false contradictions.
+
+The order is a funnel of questions:
+> Can these claims legally be compared? → If yes, how do they relate? → If a relation is claimed,
+> what warrant licenses it? → If licensed, how strong is it?
+
+1. **Candidate retrieval** — concept layer surfaces the shortlist (embeddings, not decisions).
+2. **Proposition normalization** — extract comparison dims (scope/modality/quantifier/polarity).
+3. **Scope / modality / quantifier alignment** — the gate. If different scope → stop, emit
+   `scope_mismatch`. If unclear → `needs_scope_check`.
+4. **Relation classification** — supports / entails / assumes / attacks / no_relation.
+5. **Target classification** — only if `attacks`; assign conclusion/premise/inference/scope/
+   definition/evidence_quality/value_weighting.
+6. **Warrant extraction** — the proposition connecting the two; record `warrant_source`.
+7. **Source-span licensing** — which spans permit this relation? If none → `insufficient_evidence`.
+8. **Fresh-context verification** — a separate, clean-context call: "given these claims + spans, is
+   this relation supported? yes/partial/no." No memory of having proposed it (anti-sycophancy).
+9. **Burden-of-proof downgrade** — apply the table in §12. Under-claim mechanically.
+10. **Final status assignment** — proposed / verified / needs_scope_check / insufficient_evidence.
+
+---
+
+## 12. Downgrade table (make under-claiming mechanical)
+
+"Under-claim when unsure" must be code, not vibes. These are **forced** transitions applied after
+classification:
+
+| Condition | Forced downgrade |
+|-----------|------------------|
+| `scope_alignment = different` | → `scope_mismatch` |
+| `scope_alignment = unclear` | → `status: needs_scope_check` |
+| `source_span_ids` empty | → `insufficient_evidence` |
+| `warrant_source = model_inferred` only | cannot become `verified`; cap `strength = weak`, `status = proposed` |
+| `modality_alignment = mismatch` (e.g. "may" vs "is") | → `same_topic_no_relation` or `needs_scope_check` |
+| `relation = attacks` with no warrant | **forbidden** — an attack with no warrant does not exist |
+
+The asymmetry from §7 is enforced here: these rules can only ever *weaken* an edge, never
+strengthen it. A contradiction has to survive the whole funnel intact to be shown as one.
+
+---
+
+## 13. Eval success thresholds
+
+The §10 eval set needs pass/fail targets, or "logic" passes by feeling good in demos. Minimum
+acceptable:
+
+| Metric | Target | Why |
+|--------|--------|-----|
+| **false contradiction rate** | **< 5%** | the one that matters most — false "X contradicts Y" destroys trust |
+| `scope_mismatch` recall | > 85% | catching the disguised non-conflicts is the whole point |
+| `same_topic_no_relation` recall | > 80% | the guard against similarity-as-insight |
+| attack-target accuracy | > 75% | "attacks the inference" vs "attacks the premise" is the value |
+| `warrant_source` accuracy | > 80% | inferred-vs-stated drives UI trust rendering |
+| unsupported `verified` edges | **0 tolerated** | a verified edge with no licensing span is a lie |
+
+**A missed relation is acceptable; a false contradiction is not.** Optimize recall on the safe
+labels, precision on the dangerous ones.
+
+---
+
+## 14. UI rendering rules (trust states → what the user sees)
+
+The trust states are useless unless the product knows how to show them. The mapping:
+
+| Internal state | Shown as |
+|----------------|----------|
+| verified attack | strong, visible conflict |
+| proposed attack | "possible tension" (soft) |
+| `needs_scope_check` | "may differ by scope" |
+| `warrant_source = model_inferred` | "inferred by system" badge |
+| `insufficient_evidence` | hidden by default / debug view only |
+
+This is the same honest-degradation principle as V1's grounding states: the more uncertain the
+edge, the more hedged its presentation — never the reverse.
+
+---
+
+## The canonical primitive — relation, not edge
+
+The earlier draft of this doc ended with a `LogicEdge` type, which contradicts §8 ("don't make
+everything an edge"). Corrected: the adjudicator emits a **`CandidateRelation`** (raw judgment);
+accepted relations are *materialized* as nodes or audit edges depending on kind. The relation is
+the primitive; its representation is a downstream decision.
 
 ```ts
-type LogicEdge = {
+type CandidateRelation = {            // raw adjudicator output (pre-materialization)
   id: string
-  from: string[]                 // premise/attacker claim ids
-  to: string                     // target claim (or InferenceNode) id
+  from: string[]                      // premise / attacker claim ids
+  to: string                          // target claim id
   relation:
     | "supports" | "entails" | "assumes"
     | "attacks"
     | "same_topic_no_relation" | "scope_mismatch" | "insufficient_evidence"
-  target?:                       // precision when relation = "attacks"
+  target?:                            // precision when relation = "attacks"
     | "conclusion" | "premise" | "inference"
     | "scope" | "definition" | "evidence_quality" | "value_weighting"
   warrant: string
@@ -292,7 +379,15 @@ type LogicEdge = {
   confidence: number
   status: "proposed" | "verified" | "user_confirmed" | "user_rejected" | "needs_scope_check" | "insufficient_evidence"
 }
+
+// materialization (per §8 — relationships with their own evidence become nodes):
+type InferenceNode = { id: string; from: string[]; to: string; warrant: string; /* + provenance, confidence, feedback */ }
+type ConflictNode  = { id: string; attacker: string; target_claim: string; target: AttackTarget; /* + alignment, warrant */ }
+type AuditEdge     = { from: string; to: string; relation: RelationKind }   // graph-traversal convenience only
 ```
 
-That is the difference between a cool argument graph and a real logic engine: every edge carries a
-warrant, a scope check, a target, source evidence, and an uncertainty state — or it doesn't exist.
+`supports`/`entails`/`assumes` and a clean `attacks` become an `InferenceNode` or `ConflictNode`
+(they carry evidence and can themselves be contested). `same_topic_no_relation` /
+`scope_mismatch` / `insufficient_evidence` are recorded but **not** drawn as reasoning. That is the
+difference between a cool argument graph and a real logic engine: every relation earns a warrant, a
+scope check, a target, source evidence, and an uncertainty state — or it doesn't exist.

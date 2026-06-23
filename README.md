@@ -46,7 +46,14 @@ This is the thinking/brainstorm space for the product, not the codebase (yet).
 | [`Brainstorm/logic-contract.md`](Brainstorm/logic-contract.md) | The governance rules for the logic layer — when the system is *allowed* to say supports / depends-on / contradicts / undermines / only-seems-related. Proposition normalization, the scope/modality contradiction gate, warrants, and the eval set. |
 | [`Brainstorm/feasibility-report.md`](Brainstorm/feasibility-report.md) | The long-horizon architecture (constrained decoding, RST parsing, multi-agent debate, PageRank, cross-document entity resolution, UI/UX). The destination, not the first build. |
 
+## Code
+
+| Path | What |
+|------|------|
+| [`eval/`](eval/) | The first real code — a zero-dependency harness that tests whether a model can tell the logic relations apart on hand-labeled claim pairs. `node eval/run-eval.mjs --dry` validates it with no API key. This is the gate: if the classifier can't separate `supports` / `scope_mismatch` / `same_topic_no_relation` / attack targets, the logic layer is premature. |
+
 ## Status
 
-Concept / brainstorm stage. The next concrete step is a paste-in prototype of the V1
-split-pane, source-linked outline wired to a real model call.
+Brainstorm + first eval harness. Two open build fronts: (1) the V1 paste-in split-pane prototype
+wired to a real model call; (2) running the logic eval against a live model to see if the
+classification core clears the thresholds in [`eval/README.md`](eval/README.md).
