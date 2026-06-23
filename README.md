@@ -42,6 +42,7 @@ This is the thinking/brainstorm space for the product, not the codebase (yet).
 | File | What it is |
 |------|------------|
 | [`Brainstorm/argument-map-v1.md`](Brainstorm/argument-map-v1.md) | The sharp V1 cut — what to build first, what to deliberately skip, the one risk to test. **Start here.** |
+| [`Brainstorm/linking-architecture.md`](Brainstorm/linking-architecture.md) | **The heart of the system** — how Re-read connects things: concept-layer retrieval + a logic/dialectic layer that follows inference chains and surfaces contradictions neither source stated. |
 | [`Brainstorm/feasibility-report.md`](Brainstorm/feasibility-report.md) | The long-horizon architecture (constrained decoding, RST parsing, multi-agent debate, PageRank, cross-document entity resolution, UI/UX). The destination, not the first build. |
 
 ## Status
