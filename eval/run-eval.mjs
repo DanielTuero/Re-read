@@ -251,16 +251,28 @@ function dryRun(cases) {
   }
 
   console.log(`Running ${cases.length} cases against ${MODEL} (provider: ${PROVIDER}) ...`);
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const DELAY = Number(argVal("--delay") || 400);   // throttle to dodge rate limits
+  const RETRIES = 2;                                  // retry transient errors
   const preds = [];
   for (const c of cases) {
-    try {
-      const p = await adjudicate(systemPrompt, c);
-      preds.push(p);
+    let pred = null, lastErr;
+    for (let attempt = 0; attempt <= RETRIES && !pred; attempt++) {
+      try {
+        pred = await adjudicate(systemPrompt, c);
+      } catch (e) {
+        lastErr = e;
+        if (attempt < RETRIES) await sleep(1500 * (attempt + 1));
+      }
+    }
+    if (pred) {
+      preds.push(pred);
       process.stdout.write(".");
-    } catch (e) {
-      console.error(`\n${c.id} error: ${e.message}`);
+    } else {
+      console.error(`\n${c.id} error: ${lastErr.message.slice(0, 120)}`);
       preds.push({});
     }
+    if (DELAY) await sleep(DELAY);
   }
   console.log("");
   const pass = report(score(cases, preds));
