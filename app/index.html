@@ -56,8 +56,19 @@
 <main>
   <div id="input-view">
     <textarea id="text" placeholder="Paste an article, essay, paper, report, email thread, or transcript…"></textarea>
-    <div class="row"><button id="go">Map it</button><span class="hint" id="hint">Builds an idea-web: claims, evidence, counterpoints, causes — connected by how they relate.</span></div>
-    <div class="samples">Try: <a data-s="transit">city transit debate</a><a data-s="ai">AI power concentration</a></div>
+    <div class="row">
+      <button id="go">Map it</button>
+      <label class="hint" style="display:flex;align-items:center;gap:6px;">Lens:
+        <select id="lens" style="font:inherit;padding:6px 8px;border-radius:7px;border:1px solid var(--line);background:var(--surface);color:var(--ink);">
+          <option value="auto">Auto-detect</option>
+          <option value="argument">Argument</option>
+          <option value="narrative">Narrative</option>
+          <option value="explanatory">Explanatory</option>
+        </select>
+      </label>
+      <span class="hint" id="hint">Detects whether it's an argument, a story, or an explainer — and maps it with the right roles.</span>
+    </div>
+    <div class="samples">Try: <a data-s="transit">city transit debate</a><a data-s="ai">AI power concentration</a><a data-s="story">a story opening</a></div>
   </div>
 
   <div id="view">
@@ -66,7 +77,8 @@
       <div id="src-text"></div>
     </div>
     <div class="pane">
-      <h2>Idea web <span class="hint" style="font-weight:400;text-transform:none;letter-spacing:0">flows left → right · drag to rearrange</span>
+      <h2>Idea web <span id="mode-badge" style="font-weight:600;text-transform:uppercase;letter-spacing:.04em;font-size:10.5px;padding:2px 8px;border-radius:5px;background:#eee;color:#555;display:none"></span>
+        <span class="hint" style="font-weight:400;text-transform:none;letter-spacing:0">flows left → right · drag to rearrange</span>
         <button class="ghost tbtn" id="tidy">⤢ Tidy</button></h2>
       <svg id="graph"></svg>
       <div class="legend" id="legend"></div>
@@ -78,14 +90,28 @@
 <script>
 const SAMPLES = {
   transit:`Some people argue that cities should invest more in public transportation because it reduces traffic, lowers pollution, and makes daily life easier for people who cannot afford cars. A strong train or bus system can connect neighborhoods, help workers reach jobs, and make the city feel more accessible. Others argue that cities should prioritize roads and parking because many people still depend on cars for flexibility, especially families, small businesses, and those who live far from transit lines. In this view, improving roads is not anti-environmental; it is simply a practical response to how people actually move through the city.`,
-  ai:`Advanced AI requires massive compute, which only a few large companies can afford. This concentrates power in the hands of a few firms, and that concentration increases society's dependency on them. Defenders counter that AI also democratizes expertise: it helps students, small businesses, and non-experts do things that once required specialists. So the same technology both centralizes infrastructure and decentralizes capability.`
+  ai:`Advanced AI requires massive compute, which only a few large companies can afford. This concentrates power in the hands of a few firms, and that concentration increases society's dependency on them. Defenders counter that AI also democratizes expertise: it helps students, small businesses, and non-experts do things that once required specialists. So the same technology both centralizes infrastructure and decentralizes capability.`,
+  story:`On the 24th of February, 1815, the lookout at Marseilles signalled the arrival of the Pharaon, coming in from Smyrna. As usual, a pilot put off immediately and rounded the harbor. The ship drew on slowly, and an air of melancholy hung over it, so that the watchers on the shore felt instinctively that some misfortune had occurred on board. Yet the experienced sailors saw that if there had been an accident, it was not to the vessel herself, for she came on in perfect trim. Standing beside the pilot was a young man who watched every movement of the ship with a keen eye. When the Pharaon at last reached the harbor, the young man signalled for the anchor to be dropped, and the crowd of spectators pressed forward, sensing that a story was about to be told.`
 };
 
 const ROLE_COLORS = {
+  // argument
   thesis:"#6b4fbb", claim:"#1d8a6e", evidence:"#2f6f9e", counterpoint:"#c0492b",
-  assumption:"#b8860b", definition:"#6b6a64", cause:"#b5701f", consequence:"#a85d8a", background:"#9a9890"
+  assumption:"#b8860b", definition:"#6b6a64", cause:"#b5701f", consequence:"#a85d8a", background:"#9a9890",
+  // narrative
+  event:"#2f6f9e", character:"#6b4fbb", setting:"#9a9890", action:"#1d8a6e",
+  motivation:"#b8860b", turn:"#c0492b", detail:"#b0aea6",
+  // explanatory
+  concept:"#6b4fbb", mechanism:"#1d8a6e", effect:"#a85d8a", condition:"#b8860b", example:"#2f8a5e"
 };
-const EDGE_COLORS = { supports:"#2f8a5e", contradicts:"#c0392b", causes:"#2f6f9e", explains:"#8a887f", elaborates:"#8a887f", exemplifies:"#8a887f", qualifies:"#b8860b" };
+const EDGE_COLORS = {
+  supports:"#2f8a5e", contradicts:"#c0392b", causes:"#2f6f9e", explains:"#8a887f",
+  elaborates:"#8a887f", exemplifies:"#8a887f", qualifies:"#b8860b",
+  then:"#5a86b5", foreshadows:"#a85fb0", reveals:"#2f8a5e", motivates:"#b8860b", contrasts:"#c0392b",
+  enables:"#2f8a5e", requires:"#b8860b"
+};
+const LATERAL = new Set(["contradicts","contrasts"]);   // these don't define left->right flow
+const DASHED  = new Set(["contradicts","contrasts","foreshadows"]);
 const $ = (id)=>document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 let RAW="", N=[], E=[], svg, W=600, H=460, raf=0, sel=null, byId={};
@@ -98,7 +124,7 @@ async function run(){
   const text=$("text").value.trim(); if(!text) return;
   $("go").disabled=true; $("hint").innerHTML='<span class="spin"></span> mapping the ideas…';
   try{
-    const res=await fetch("/api/extract",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({text})});
+    const res=await fetch("/api/extract",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({text, mode:$("lens").value})});
     const data=await res.json(); if(data.error) throw new Error(data.error);
     RAW=text; build(data);
   }catch(e){ $("hint").innerHTML='<span class="err">'+esc(e.message)+'</span>'; $("go").disabled=false; }
@@ -106,6 +132,10 @@ async function run(){
 
 function build(data){
   $("model").textContent=data.model||"";
+  const mb=$("mode-badge");
+  if(data.mode){ mb.style.display="inline-block"; mb.textContent=data.mode;
+    const cmap={argument:"#6b4fbb",narrative:"#2f6f9e",explanatory:"#b5701f"}; const c=cmap[data.mode]||"#555";
+    mb.style.background=c+"22"; mb.style.color=c; } else mb.style.display="none";
   $("input-view").style.display="none"; $("view").style.display="grid";
   $("src-text").textContent=RAW;
   svg=$("graph");
@@ -132,7 +162,7 @@ function legend(){
 
 // ---- layered (left -> right) layout following the flow of reasoning ------
 function layout(){
-  const flow = E.filter(e=>e.type!=="contradicts");      // these define direction
+  const flow = E.filter(e=>!LATERAL.has(e.type));         // these define direction (left->right)
   const inOf={}, nb={}; N.forEach(n=>{ inOf[n.id]=[]; nb[n.id]=[]; });
   flow.forEach(e=>{ inOf[e.to].push(e.from); });
   E.forEach(e=>{ nb[e.from].push(e.to); nb[e.to].push(e.from); });
@@ -177,7 +207,7 @@ function draw(){
   for(const e of E){
     const line=document.createElementNS(NS,"path");
     line.setAttribute("class","edge"); line.setAttribute("stroke",EDGE_COLORS[e.type]||"#8a887f");
-    if(e.type==="contradicts") line.setAttribute("stroke-dasharray","5 4");
+    if(DASHED.has(e.type)) line.setAttribute("stroke-dasharray","5 4");
     line.setAttribute("marker-end","url(#arr)");
     const t=document.createElementNS(NS,"title"); t.textContent=e.type; line.appendChild(t);
     e.el=line; svg.appendChild(line);

@@ -91,11 +91,12 @@ function ground(text, quote) {
   return { grounding: "unpinned" };
 }
 
-async function extract(text) {
-  const raw = await callModel(text);
+async function extract(text, mode) {
+  const userText = mode && mode !== "auto" ? `Requested mode: ${mode}\n\n${text}` : text;
+  const raw = await callModel(userText);
   const parsed = parseJSON(raw);
   const nodes = (parsed.nodes || []).map((n) => ({ ...n, ...ground(text, n.quote) }));
-  return { nodes, edges: parsed.edges || [], model: MODEL };
+  return { mode: parsed.mode || mode || "", nodes, edges: parsed.edges || [], model: MODEL };
 }
 
 // ---- http -----------------------------------------------------------------
@@ -112,9 +113,9 @@ createServer(async (req, res) => {
   }
   if (req.method === "POST" && req.url === "/api/extract") {
     try {
-      const { text } = JSON.parse(await readBody(req));
+      const { text, mode } = JSON.parse(await readBody(req));
       if (!text || !text.trim()) throw new Error("empty text");
-      const out = await extract(text);
+      const out = await extract(text, mode);
       res.writeHead(200, { "content-type": "application/json" });
       return res.end(JSON.stringify(out));
     } catch (e) {
