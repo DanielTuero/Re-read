@@ -165,7 +165,12 @@
   .place-map-wrap{ position:relative; }
   #place-map{ height:540px; border:1px solid var(--line); border-radius:8px; z-index:0; background:#e9e6dd; }
   .map-note{ color:var(--soft); font-size:12px; margin-top:6px; }
-  .leaflet-popup-content{ font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+  .leaflet-popup-content{ font:13px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; max-width:240px; }
+  .place-tip{ max-width:250px !important; white-space:normal !important; font:12px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+  .place-tip .tip-addr{ color:#6f6b62; }
+  .place-tip .tip-exp{ color:#2f2a24; }
+  #map-pane.expanded #place-map{ height:calc(100vh - 176px); }
+  #map-pane.expanded .places-list{ max-height:calc(100vh - 176px); }
 
   .flow-toolbar{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; }
   .flow-title{ font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; font-weight:720; }
@@ -854,12 +859,25 @@ function renderPlaces(){
       <span class="place-geo" id="geo-${attr(entity.id)}">locating…</span>
       <span class="place-exp">${esc(entity.explanation || "")}</span>
     </button>`).join("");
+  const expanded=$("map-pane").classList.contains("expanded");
   $("tab-places").innerHTML = `
+    <div class="flow-toolbar" style="margin-bottom:10px">
+      <div class="flow-title">Locations in the passage</div>
+      <button class="ghost" id="place-expand">${expanded?"🗗 Collapse map":"⛶ Expand map"}</button>
+    </div>
     <div class="places-grid">
       <div class="places-list">${list}</div>
-      <div class="place-map-wrap"><div id="place-map"></div><div class="map-note" id="map-note"></div></div>
+      <div class="place-map-wrap"><div id="place-map"></div><div class="map-note" id="map-note">Markers are geocoded via OpenStreetMap. Hover a pin for details.</div></div>
     </div>`;
   $("tab-places").querySelectorAll("[data-place]").forEach(btn=>btn.addEventListener("click",()=>focusPlace(btn.dataset.place)));
+  const ex=$("place-expand"); if(ex) ex.onclick=togglePlacesExpand;
+}
+function togglePlacesExpand(){
+  const p=$("map-pane"); p.classList.toggle("expanded");
+  const btn=$("place-expand"); if(btn) btn.textContent = p.classList.contains("expanded") ? "🗗 Collapse map" : "⛶ Expand map";
+  requestAnimationFrame(()=>{
+    if(placeMap){ placeMap.invalidateSize(); const pts=Object.values(placeMarkers).map(m=>m.getLatLng()); if(pts.length) placeMap.fitBounds(pts,{ padding:[34,34], maxZoom:14 }); }
+  });
 }
 function resetPlaceMap(){
   if(placeMap){ try{ placeMap.remove(); }catch{} }
@@ -872,14 +890,34 @@ function ensurePlaceMap(){
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{ maxZoom:19, attribution:"© OpenStreetMap" }).addTo(placeMap);
   return placeMap;
 }
-async function geocode(q){
-  if(geoCache[q]!==undefined) return geoCache[q];
+async function nominatim(q){
   try{
-    const res=await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`,{ headers:{ "Accept":"application/json" } });
+    const res=await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=6&q=${encodeURIComponent(q)}`,{ headers:{ "Accept":"application/json" } });
     const arr=await res.json();
-    geoCache[q]= (Array.isArray(arr) && arr[0]) ? { lat:+arr[0].lat, lon:+arr[0].lon, display:arr[0].display_name } : null;
-  }catch{ geoCache[q]=null; }
-  return geoCache[q];
+    return Array.isArray(arr) ? arr : [];
+  }catch{ return []; }
+}
+function pickBest(arr){
+  let best=null;
+  for(const r of (arr||[])){ const imp=+r.importance || 0; if(!best || imp>best.importance) best={ lat:+r.lat, lon:+r.lon, display:r.display_name, importance:imp }; }
+  return best;
+}
+// Geocode by PROMINENCE: try the clean place name first so OSM importance ranking
+// resolves famous places correctly (Naples -> Italy, not a "Naples" street). Only
+// fall back to a qualified query when the bare name is weak/missing.
+async function geocodePlace(entity){
+  const label=(entity.label || entity.map_query || "").trim();
+  const key="P:"+label;
+  if(geoCache[key]!==undefined) return geoCache[key];
+  let best=pickBest(await nominatim(label));
+  if(!best || best.importance < 0.45){
+    await new Promise(r=>setTimeout(r,1100));
+    const alt = (entity.map_query && entity.map_query.trim() && entity.map_query.trim()!==label) ? entity.map_query.trim() : (label+", France");
+    const cand=pickBest(await nominatim(alt));
+    if(cand && (!best || cand.importance>best.importance)) best=cand;
+  }
+  geoCache[key]=best || null;
+  return geoCache[key];
 }
 async function loadPlaceMap(){
   const map=ensurePlaceMap();
@@ -892,17 +930,17 @@ async function loadPlaceMap(){
   Object.values(placeMarkers).forEach(m=>{ try{ map.removeLayer(m); }catch{} }); placeMarkers={};
   const places=placeEntities(); const pts=[]; let found=0;
   for(const entity of places){
-    let g=await geocode(entity.map_query || entity.label);
-    if(!g && entity.map_query && entity.label && entity.map_query!==entity.label){
-      await new Promise(r=>setTimeout(r,1100));
-      g=await geocode(entity.label);
-    }
+    const g=await geocodePlace(entity);
     const geoEl=$("geo-"+entity.id);
     if(g){
-      const marker=L.marker([g.lat,g.lon]).addTo(map).bindPopup(`<b>${esc(entity.label)}</b><br>${esc(entity.explanation || "")}`);
+      const addr=g.display ? g.display.split(",").slice(0,3).join(",").trim() : "";
+      const note=`<b>${esc(entity.label)}</b>${addr?`<br><span class="tip-addr">${esc(addr)}</span>`:""}${entity.explanation?`<br><span class="tip-exp">${esc(entity.explanation)}</span>`:""}`;
+      const marker=L.marker([g.lat,g.lon]).addTo(map);
+      marker.bindTooltip(note,{ direction:"top", offset:[0,-8], opacity:.97, className:"place-tip" });
+      marker.bindPopup(note);
       marker.on("click",()=>{ selectedContextId=entity.id; if(entity.source_start!=null) renderSource({ source_start:entity.source_start, source_end:entity.source_end }); markActivePlace(entity.id); });
       placeMarkers[entity.id]=marker; pts.push([g.lat,g.lon]); found++;
-      if(geoEl) geoEl.textContent = g.display ? g.display.split(",").slice(0,2).join(",").trim() : "on map";
+      if(geoEl) geoEl.textContent = addr || "on map";
     } else if(geoEl){ geoEl.textContent="not found on map"; }
     await new Promise(r=>setTimeout(r,1100));
   }
@@ -1436,7 +1474,14 @@ $("new-run-view").onclick=startNew;
 document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>setActiveTab(b.dataset.tab)));
 document.querySelectorAll(".samples a").forEach(a=>a.onclick=()=>{ $("text").value=SAMPLES[a.dataset.s]; });
 $("text").addEventListener("keydown",(e)=>{ if((e.metaKey||e.ctrlKey)&&e.key==="Enter") run(); });
-document.addEventListener("keydown",(e)=>{ if(e.key==="Escape" && $("map-pane").classList.contains("expanded")) toggleFull(); });
+document.addEventListener("keydown",(e)=>{
+  if(e.key==="Escape" && $("map-pane").classList.contains("expanded")){
+    $("map-pane").classList.remove("expanded");
+    const fb=$("full"); if(fb) fb.textContent="⛶";
+    const pe=$("place-expand"); if(pe) pe.textContent="⛶ Expand map";
+    requestAnimationFrame(()=>{ measure(); fitView(); if(placeMap) placeMap.invalidateSize(); });
+  }
+});
 bindCanvas();
 refreshRuns();
 </script>
