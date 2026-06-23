@@ -3,98 +3,319 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Re-read — idea web</title>
+<title>Re-read - reading lens</title>
 <style>
-  :root{ --bg:#faf9f6; --surface:#fff; --ink:#1c1b19; --muted:#6b6a64; --line:#e6e4dc; --accent:#2f6f5e; --markbg:#fbe7a2; }
+  :root{
+    --bg:#f7f6f1;
+    --surface:#fffdf8;
+    --surface-2:#f1efe7;
+    --ink:#1d1c19;
+    --muted:#6f6b62;
+    --soft:#969187;
+    --line:#ded9ce;
+    --line-strong:#c9c1b4;
+    --accent:#2f6f5e;
+    --accent-2:#6b4fbb;
+    --warn:#b5701f;
+    --danger:#b84832;
+    --markbg:#f9df86;
+    --shadow:0 18px 44px rgba(45,38,24,.08);
+  }
   *{ box-sizing:border-box; }
-  body{ margin:0; font:16px/1.6 -apple-system,Segoe UI,Roboto,sans-serif; color:var(--ink); background:var(--bg); }
-  header{ padding:16px 24px; border-bottom:1px solid var(--line); display:flex; align-items:baseline; gap:14px; }
-  header h1{ margin:0; font-size:19px; font-weight:600; letter-spacing:-.01em; }
+  body{ margin:0; font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; color:var(--ink); background:var(--bg); }
+  header{ min-height:62px; padding:14px 24px; border-bottom:1px solid var(--line); display:flex; align-items:baseline; gap:14px; background:rgba(255,253,248,.84); backdrop-filter:blur(12px); position:sticky; top:0; z-index:5; }
+  header h1{ margin:0; font-size:19px; font-weight:680; letter-spacing:0; }
   header .tag{ color:var(--muted); font-size:13px; }
-  header .model{ margin-left:auto; color:#9a9890; font-size:12px; }
-  main{ max-width:1240px; margin:0 auto; padding:20px 24px; }
+  header .model{ margin-left:auto; color:var(--soft); font-size:12px; white-space:nowrap; }
+  main{ max-width:1280px; margin:0 auto; padding:20px 24px; }
 
-  #input-view textarea{ width:100%; min-height:230px; padding:16px; font:15px/1.6 ui-monospace,Menlo,monospace; color:var(--ink); background:var(--surface); border:1px solid var(--line); border-radius:10px; resize:vertical; }
+  #input-view{ display:grid; grid-template-columns:minmax(230px,280px) minmax(0,1fr); gap:18px; align-items:start; }
+  .input-main{ min-width:0; }
+  #input-view textarea{ width:100%; min-height:240px; padding:16px; font:14.5px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:var(--ink); background:var(--surface); border:1px solid var(--line); border-radius:8px; resize:vertical; box-shadow:var(--shadow); }
   .row{ display:flex; gap:12px; align-items:center; margin-top:12px; flex-wrap:wrap; }
-  button{ font:500 14px/1 inherit; padding:10px 18px; border-radius:8px; border:1px solid var(--line); background:var(--accent); color:#fff; cursor:pointer; }
+  button,select{ font:500 14px/1 inherit; }
+  button{ padding:9px 15px; border-radius:8px; border:1px solid var(--line); background:var(--accent); color:#fff; cursor:pointer; min-height:36px; }
   button.ghost{ background:transparent; color:var(--ink); }
-  button:disabled{ opacity:.5; cursor:default; }
+  button.icon{ width:34px; height:34px; padding:0; display:inline-flex; align-items:center; justify-content:center; color:var(--ink); background:var(--surface); }
+  button:disabled{ opacity:.55; cursor:default; }
+  select{ padding:7px 10px; border-radius:7px; border:1px solid var(--line); background:var(--surface); color:var(--ink); }
   .hint{ color:var(--muted); font-size:13px; }
   .samples{ margin-top:18px; font-size:13px; color:var(--muted); }
   .samples a{ color:var(--accent); cursor:pointer; text-decoration:underline; margin-right:14px; }
-  .err{ color:#b00; }
+  .err{ color:#a42020; }
   .spin{ display:inline-block; width:14px; height:14px; border:2px solid var(--line); border-top-color:var(--accent); border-radius:50%; animation:s .7s linear infinite; vertical-align:-2px; }
   @keyframes s{ to{ transform:rotate(360deg);} }
 
-  #view{ display:none; grid-template-columns:320px 1fr; gap:18px; }
-  .pane{ background:var(--surface); border:1px solid var(--line); border-radius:10px; height:calc(100vh - 168px); overflow:hidden; display:flex; flex-direction:column; }
-  .pane h2{ margin:0; padding:11px 15px; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); border-bottom:1px solid var(--line); display:flex; align-items:center; gap:8px; }
-  #src-text{ padding:14px 16px; white-space:pre-wrap; font-size:14.5px; overflow:auto; flex:1; }
-  mark{ background:var(--markbg); border-radius:3px; }
+  #view{ display:none; grid-template-columns:minmax(230px,280px) minmax(270px,340px) minmax(0,1fr); gap:18px; align-items:stretch; }
+  .pane{ background:var(--surface); border:1px solid var(--line); border-radius:8px; height:calc(100vh - 122px); min-height:560px; overflow:hidden; display:flex; flex-direction:column; box-shadow:var(--shadow); }
+  .pane-head{ min-height:50px; padding:10px 14px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:10px; }
+  .pane-head h2{ margin:0; font-size:12px; font-weight:720; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
+  .pane-head .grow{ flex:1; min-width:0; }
+  #src-text{ padding:16px; white-space:pre-wrap; font-size:14.5px; overflow:auto; flex:1; }
+  mark{ background:var(--markbg); border-radius:3px; padding:0 1px; }
+  .context-mark{ display:inline; min-height:0; border:0; border-bottom:2px solid #6b4fbb; background:#efe9ff; color:var(--ink); border-radius:3px; padding:0 2px; cursor:pointer; font:inherit; line-height:inherit; }
+  .context-mark.active{ background:#dccfff; border-bottom-color:#4f35a3; }
+  .voice-mark{ display:inline; min-height:0; border:0; color:var(--ink); border-radius:3px; padding:0 1px; cursor:pointer; font:inherit; line-height:inherit; background:transparent; }
+  .voice-direct_speech{ background:#fbeccb; box-shadow:inset 0 -2px 0 #c98a1e; }
+  .voice-internal_thought{ background:#eaf1fb; border-bottom:2px solid #2f6f9e; }
+  .voice-free_indirect_discourse{ background:#f1ecfb; border-bottom:2px dashed #6b4fbb; }
+  .voice-reported_speech{ border-bottom:2px dotted #6f6b62; }
+  .voice-narrator_description{ background:#efece4; }
+  .voice-character_judgment{ background:#fbe7ef; border-bottom:2px solid #b84832; }
+  .voice-mark.active{ outline:2px solid rgba(31,28,22,.22); outline-offset:1px; }
+  .voice-group{ margin-bottom:18px; }
+  .voice-speaker{ font-size:14px; font-weight:700; margin:0 0 9px; display:flex; align-items:center; gap:9px; }
+  .voice-speaker .avatar{ width:26px; height:26px; border-radius:999px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:12px; font-weight:720; }
+  .voice-speaker .count{ color:var(--muted); font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; }
+  .voice-lines{ display:grid; gap:8px; }
+  .voice-line{ width:100%; text-align:left; border:1px solid var(--line); border-left:5px solid var(--accent); border-radius:8px; background:#fffefa; padding:10px 12px; cursor:pointer; display:grid; gap:5px; }
+  .voice-line.active{ border-color:var(--accent); background:#f4faf6; box-shadow:inset 0 0 0 1px rgba(47,111,94,.16); }
+  .voice-top{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .voice-badge{ color:#fff; font-size:10px; font-weight:720; text-transform:uppercase; letter-spacing:.04em; padding:2px 7px; border-radius:999px; }
+  .voice-tone{ color:var(--muted); font-size:12px; }
+  .voice-quote{ font-size:14px; font-style:italic; line-height:1.4; }
+  .voice-fn{ color:var(--muted); font-size:12.5px; }
+  .voice-legend{ display:flex; flex-wrap:wrap; gap:6px 14px; margin-bottom:14px; font-size:11.5px; color:var(--muted); }
+  .voice-legend i{ display:inline-block; width:16px; height:10px; border-radius:2px; margin-right:5px; vertical-align:-1px; }
+  .runs-card{ background:var(--surface); border:1px solid var(--line); border-radius:8px; min-height:240px; max-height:calc(100vh - 122px); overflow:hidden; display:flex; flex-direction:column; box-shadow:var(--shadow); }
+  .runs-head{ min-height:48px; padding:10px 12px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:8px; }
+  .runs-head h2{ margin:0; color:var(--muted); font-size:12px; font-weight:720; text-transform:uppercase; letter-spacing:.06em; }
+  .runs-head .grow{ flex:1; }
+  .run-list{ padding:8px; overflow:auto; display:grid; gap:8px; }
+  .run-item{ width:100%; min-height:72px; padding:10px; text-align:left; border:1px solid var(--line); border-radius:8px; background:#fffefa; color:var(--ink); display:grid; gap:5px; }
+  .run-item.active{ border-color:var(--accent); background:#f4faf6; box-shadow:inset 0 0 0 1px rgba(47,111,94,.16); }
+  .run-item .run-title{ font-size:13px; line-height:1.25; font-weight:650; }
+  .run-item .run-meta{ color:var(--muted); font-size:11px; display:flex; gap:7px; flex-wrap:wrap; }
+  .run-item .run-id-mini{ color:var(--soft); font:11px/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .run-empty{ padding:14px 12px; color:var(--soft); font-size:13px; }
+  .run-id{ margin-left:8px; font:11px/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:var(--soft); text-transform:none; letter-spacing:0; }
 
-  .graph-wrap{ position:relative; flex:1; overflow:hidden; }
+  #mode-badge{ font-weight:700; text-transform:uppercase; letter-spacing:.05em; font-size:10.5px; padding:3px 8px; border-radius:999px; background:#eee; color:#555; display:none; }
+  .tabs{ display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); gap:0; border-bottom:1px solid var(--line); background:var(--surface-2); }
+  .tab{ border:0; border-right:1px solid var(--line); border-radius:0; color:var(--muted); background:transparent; min-height:42px; padding:0 6px; }
+  .tab:last-child{ border-right:0; }
+  .tab.active{ color:var(--ink); background:var(--surface); box-shadow:inset 0 -2px 0 var(--accent); }
+  .panel-shell{ flex:1; min-height:0; overflow:hidden; }
+  .tab-panel{ height:100%; overflow:auto; padding:18px; display:none; }
+  .tab-panel.active{ display:block; }
+
+  .lens-stack{ display:grid; gap:14px; max-width:920px; }
+  .reading-card{ border:1px solid var(--line); border-radius:8px; background:#fffefa; padding:16px; }
+  .reading-card.primary{ border-color:#bed2ca; background:#f7fbf8; }
+  .reading-card h3{ margin:0 0 8px; font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
+  .reading-card p{ margin:0; font-size:16px; line-height:1.55; }
+  .reading-card .empty{ color:var(--soft); }
+  .spine-row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .spine-chip{ border:1px solid var(--line); border-radius:8px; background:var(--surface); padding:8px 10px; max-width:220px; cursor:pointer; }
+  .spine-chip strong{ display:block; color:var(--ink); font-size:13px; line-height:1.3; }
+  .spine-chip span{ display:block; color:var(--muted); font-size:11px; margin-top:2px; text-transform:uppercase; letter-spacing:.05em; }
+  .arrow{ color:var(--soft); font-size:17px; }
+  .role-spine{ display:grid; gap:10px; margin-top:14px; }
+  .role-step{ border:1px solid var(--line); border-left:6px solid var(--accent); border-radius:8px; background:#fffefa; padding:12px; display:grid; grid-template-columns:116px minmax(0,1fr); gap:12px; align-items:start; cursor:pointer; }
+  .role-step .step-role{ color:var(--muted); font-size:11px; font-weight:760; text-transform:uppercase; letter-spacing:.05em; }
+  .role-step .step-label{ color:var(--ink); font-size:15px; line-height:1.35; font-weight:650; }
+  .role-step .step-rel{ color:var(--soft); font-size:12px; margin-top:6px; }
+  .missing-list{ display:grid; gap:10px; counter-reset:question; }
+  .missing-item{ border:1px solid var(--line); border-radius:8px; background:#fffefa; padding:12px 14px; display:grid; grid-template-columns:28px minmax(0,1fr); gap:10px; align-items:start; }
+  .missing-item:before{ counter-increment:question; content:counter(question); width:24px; height:24px; border-radius:999px; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:720; }
+  .missing-item span{ line-height:1.45; }
+  .relation-chip{ display:inline-flex; align-items:center; border:1px solid var(--line); border-radius:999px; padding:3px 8px; color:var(--muted); background:var(--surface-2); font-size:11px; text-transform:uppercase; letter-spacing:.04em; }
+  .context-grid{ display:grid; grid-template-columns:minmax(220px,300px) minmax(0,1fr); gap:14px; align-items:start; }
+  .context-list{ display:grid; gap:8px; }
+  .context-item{ border:1px solid var(--line); border-left:5px solid var(--accent-2); border-radius:8px; background:#fffefa; color:var(--ink); text-align:left; padding:10px; min-height:64px; display:grid; gap:4px; }
+  .context-item.active{ border-color:var(--accent-2); background:#f7f3ff; }
+  .context-item strong{ font-size:14px; line-height:1.25; }
+  .context-item span{ color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.05em; }
+  .context-detail{ border:1px solid var(--line); border-radius:8px; background:#fffefa; padding:16px; min-height:220px; }
+  .context-detail h3{ margin:0 0 6px; font-size:18px; line-height:1.25; }
+  .context-detail .kind{ margin-bottom:12px; color:var(--muted); font-size:11px; font-weight:720; text-transform:uppercase; letter-spacing:.05em; }
+  .context-detail p{ margin:0 0 12px; font-size:15px; }
+  .context-tags{ display:flex; flex-wrap:wrap; gap:6px; margin:0 0 12px; }
+  .context-note{ border-top:1px solid var(--line); padding-top:11px; margin-top:10px; display:grid; gap:8px; }
+  .context-note p{ margin:0; font-size:14px; line-height:1.45; }
+  .context-actions{ display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+  .context-actions a{ display:inline-flex; align-items:center; min-height:34px; padding:8px 11px; border:1px solid var(--line); border-radius:8px; color:var(--ink); background:var(--surface); text-decoration:none; font-size:13px; }
+
+  .flow-toolbar{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; }
+  .flow-title{ font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; font-weight:720; }
+  .lane-board{ display:grid; grid-template-columns:120px 1fr; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:#fffefa; min-width:620px; }
+  .lane-label{ padding:13px 12px; border-bottom:1px solid var(--line); background:var(--surface-2); color:var(--muted); font-size:12px; font-weight:720; text-transform:uppercase; letter-spacing:.05em; }
+  .lane-track{ min-height:62px; padding:8px; border-bottom:1px solid var(--line); display:grid; gap:8px; align-items:center; }
+  .lane-label:last-of-type,.lane-track:last-of-type{ border-bottom:0; }
+  .flow-node{ align-self:stretch; min-height:44px; border:1px solid var(--line); border-left:5px solid var(--accent); border-radius:8px; background:var(--surface); padding:8px 10px; display:flex; flex-direction:column; justify-content:center; cursor:pointer; }
+  .flow-node .role{ color:var(--muted); font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; font-weight:720; }
+  .flow-node .label{ color:var(--ink); font-size:13px; line-height:1.28; margin-top:2px; }
+  .flow-node.blank{ opacity:0; pointer-events:none; }
+  .argument-grid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+  .argument-col{ border:1px solid var(--line); border-radius:8px; background:#fffefa; overflow:hidden; }
+  .argument-col h3{ margin:0; padding:11px 12px; background:var(--surface-2); border-bottom:1px solid var(--line); font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+  .argument-col .bucket{ padding:10px; display:grid; gap:8px; }
+
+  .tension-lead{ border:1px solid #e0c5b8; background:#fff7f2; border-radius:8px; padding:16px; margin-bottom:14px; }
+  .tension-lead h3{ margin:0 0 8px; color:var(--danger); font-size:12px; text-transform:uppercase; letter-spacing:.06em; }
+  .tension-lead p{ margin:0; font-size:16px; }
+  .pair-list{ display:grid; gap:10px; }
+  .pair{ display:grid; grid-template-columns:1fr 84px 1fr; align-items:stretch; gap:10px; }
+  .pair-mid{ border:1px solid var(--line); border-radius:8px; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.05em; background:var(--surface-2); }
+
+  .evidence-list{ display:grid; gap:10px; }
+  .evidence-item{ border:1px solid var(--line); border-radius:8px; background:#fffefa; padding:12px; cursor:pointer; }
+  .evidence-top{ display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+  .badge{ display:inline-flex; align-items:center; gap:5px; border-radius:999px; padding:3px 8px; font-size:10.5px; line-height:1; font-weight:720; text-transform:uppercase; letter-spacing:.05em; color:#fff; white-space:nowrap; }
+  .pin{ margin-left:auto; color:var(--soft); font-size:11px; }
+  .evidence-item strong{ display:block; font-size:14px; line-height:1.35; }
+  .evidence-more{ display:grid; gap:4px; margin-top:9px; color:var(--muted); font-size:12px; }
+  .evidence-more b{ color:var(--ink); font-weight:650; }
+  .quote{ margin-top:7px; color:var(--muted); font-size:13px; font-style:italic; }
+  .edge-label{ font:700 10px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; fill:#6f6b62; paint-order:stroke; stroke:#fffdf8; stroke-width:4px; stroke-linejoin:round; pointer-events:none; }
+  .audit-grid{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin-bottom:14px; }
+  .audit-stat{ border:1px solid var(--line); border-radius:8px; background:#fffefa; padding:11px; min-width:0; }
+  .audit-stat span{ display:block; color:var(--muted); font-size:10.5px; font-weight:720; text-transform:uppercase; letter-spacing:.05em; }
+  .audit-stat strong{ display:block; margin-top:5px; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .audit-json{ margin:0; max-height:360px; overflow:auto; white-space:pre; padding:12px; border:1px solid var(--line); border-radius:8px; background:#1f211f; color:#f6f4ec; font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  .audit-actions{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .audit-actions .grow{ flex:1; }
+
+  .web-panel{ padding:0; overflow:hidden; display:none; flex-direction:column; }
+  .web-panel.active{ display:flex; }
+  .web-bar{ min-height:44px; padding:8px 10px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:8px; flex-wrap:wrap; background:var(--surface); }
+  .web-bar .grow{ flex:1; }
+  .graph-wrap{ position:relative; flex:1; min-height:0; overflow:hidden; background:linear-gradient(0deg, rgba(222,217,206,.25) 1px, transparent 1px),linear-gradient(90deg, rgba(222,217,206,.25) 1px, transparent 1px); background-size:36px 36px; }
   #graph{ width:100%; height:100%; display:block; touch-action:none; cursor:grab; }
   #graph.panning{ cursor:grabbing; }
   .controls{ position:absolute; top:10px; right:10px; display:flex; gap:6px; }
   .controls button{ width:32px; height:32px; padding:0; font-size:16px; background:var(--surface); color:var(--ink); border:1px solid var(--line); border-radius:7px; display:flex; align-items:center; justify-content:center; }
-  .controls button:hover{ background:#f1efe8; }
   .node-pill{ cursor:pointer; }
   .node-pill rect{ stroke-width:1.5; }
-  .node-pill text{ font:500 12px/1.25 -apple-system,Segoe UI,sans-serif; pointer-events:none; }
-  .edge{ fill:none; stroke-width:1.6; }
-  .edge.dim,.node-pill.dim{ opacity:.14; }
-  .legend{ display:flex; flex-wrap:wrap; gap:5px 12px; padding:8px 14px; border-top:1px solid var(--line); font-size:11px; color:var(--muted); }
+  .node-pill text{ font:600 12px/1.25 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; pointer-events:none; }
+  .node-pill .node-rank{ font:700 9px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; pointer-events:none; fill:#fff; }
+  .edge{ fill:none; stroke-width:1.7; }
+  .edge.dim,.node-pill.dim{ opacity:.12; }
+  .edge.hidden{ display:none; }
+  .edge-label.hidden{ display:none; }
+  .edge-label.dim{ opacity:.12; }
+  .legend{ display:flex; flex-wrap:wrap; gap:5px 12px; padding:8px 14px; border-top:1px solid var(--line); font-size:11px; color:var(--muted); background:var(--surface); }
   .legend i{ width:9px; height:9px; border-radius:3px; display:inline-block; margin-right:4px; vertical-align:-1px; }
-  #detail{ padding:10px 15px; border-top:1px solid var(--line); font-size:13px; min-height:60px; }
-  #detail .role{ font-size:10.5px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; padding:2px 7px; border-radius:5px; color:#fff; }
-  #detail .q{ color:var(--muted); font-style:italic; margin-top:6px; }
-  #detail .none{ color:#9a9890; }
-  .tbtn{ margin-left:auto; padding:4px 10px; font-size:11px; }
-  #map-pane.expanded{ position:fixed; inset:0; z-index:60; height:100vh; border-radius:0; }
+  #detail{ padding:10px 15px; border-top:1px solid var(--line); font-size:13px; min-height:62px; background:var(--surface); }
+  #detail .q{ color:var(--muted); font-style:italic; margin-top:5px; }
+  #detail .none{ color:var(--soft); }
+  #map-pane.expanded{ position:fixed; inset:0; z-index:60; height:100vh; min-height:0; border-radius:0; }
+
+  @media (max-width:900px){
+    header{ flex-wrap:wrap; gap:6px 12px; }
+    header .model{ margin-left:0; width:100%; }
+    main{ padding:14px; }
+    #input-view{ grid-template-columns:1fr; }
+    #view{ grid-template-columns:1fr; }
+    .pane{ height:auto; min-height:360px; }
+    .runs-card{ max-height:260px; }
+    .pane.source{ max-height:42vh; }
+    .tabs{ grid-template-columns:repeat(8,minmax(78px,1fr)); overflow:auto; }
+    .argument-grid{ grid-template-columns:1fr; }
+    .audit-grid{ grid-template-columns:1fr 1fr; }
+    .context-grid{ grid-template-columns:1fr; }
+    .pair{ grid-template-columns:1fr; }
+    .pair-mid{ min-height:34px; }
+    .lane-board{ min-width:520px; }
+  }
 </style>
 </head>
 <body>
 <header>
   <h1>Re-read</h1>
-  <span class="tag">A web of how the ideas connect — laid out as the flow of reasoning.</span>
+  <span class="tag">A source-grounded reading lens for dense text.</span>
   <span class="model" id="model"></span>
 </header>
 <main>
   <div id="input-view">
-    <textarea id="text" placeholder="Paste an article, essay, paper, report, story, email thread, or transcript…"></textarea>
-    <div class="row">
-      <button id="go">Map it</button>
-      <label class="hint" style="display:flex;align-items:center;gap:6px;">Lens:
-        <select id="lens" style="font:inherit;padding:6px 8px;border-radius:7px;border:1px solid var(--line);background:var(--surface);color:var(--ink);">
-          <option value="auto">Auto-detect</option><option value="argument">Argument</option><option value="narrative">Narrative</option><option value="explanatory">Explanatory</option>
-        </select>
-      </label>
-      <span class="hint" id="hint">Detects whether it's an argument, a story, or an explainer — and maps it with the right roles.</span>
-    </div>
-    <div class="samples">Try: <a data-s="transit">city transit debate</a><a data-s="ai">AI power concentration</a><a data-s="story">a story opening</a></div>
+    <aside class="runs-card">
+      <div class="runs-head">
+        <h2>Runs</h2>
+        <div class="grow"></div>
+        <button class="ghost" id="new-run-home">New</button>
+      </div>
+      <div class="run-list" id="home-runs-list"></div>
+    </aside>
+    <section class="input-main">
+      <textarea id="text" placeholder="Paste an article, essay, paper, report, story, email thread, or transcript..."></textarea>
+      <div class="row">
+        <button id="go">Map it</button>
+        <label class="hint" style="display:flex;align-items:center;gap:6px;">Lens
+          <select id="lens">
+            <option value="auto">Auto-detect</option>
+            <option value="argument">Argument</option>
+            <option value="narrative">Narrative</option>
+            <option value="explanatory">Explanatory</option>
+          </select>
+        </label>
+        <span class="hint" id="hint">Ready.</span>
+      </div>
+      <div class="samples">Try: <a data-s="transit">city transit debate</a><a data-s="ai">AI power concentration</a><a data-s="story">a story opening</a></div>
+    </section>
   </div>
 
   <div id="view">
-    <div class="pane">
-      <h2>Source <button class="ghost tbtn" id="reset">↺ New</button></h2>
+    <aside class="pane runs-pane">
+      <div class="pane-head">
+        <h2>Runs</h2>
+        <div class="grow"></div>
+        <button class="ghost" id="new-run-view">New</button>
+      </div>
+      <div class="run-list" id="view-runs-list"></div>
+    </aside>
+    <section class="pane source">
+      <div class="pane-head">
+        <h2>Source</h2>
+        <div class="grow"></div>
+        <button class="ghost icon" id="voice-toggle" title="Show character voice" style="display:none">🗣</button>
+        <button class="ghost icon" id="reset" title="New passage">↺</button>
+      </div>
       <div id="src-text"></div>
-    </div>
-    <div class="pane" id="map-pane">
-      <h2>Idea web <span id="mode-badge" style="font-weight:600;text-transform:uppercase;letter-spacing:.04em;font-size:10.5px;padding:2px 8px;border-radius:5px;background:#eee;color:#555;display:none"></span>
-        <span class="hint" style="font-weight:400;text-transform:none;letter-spacing:0">drag a node · scroll to zoom · drag canvas to pan</span>
-        <button class="ghost tbtn" id="tidy">⤢ Tidy</button></h2>
-      <div class="graph-wrap">
-        <svg id="graph"></svg>
-        <div class="controls">
-          <button id="zin" title="Zoom in">+</button>
-          <button id="zout" title="Zoom out">−</button>
-          <button id="zfit" title="Fit to screen">⤢</button>
-          <button id="full" title="Full screen">⛶</button>
+    </section>
+    <section class="pane" id="map-pane">
+      <div class="pane-head">
+        <div class="grow">
+          <h2>Passage Map <span id="mode-badge"></span><span class="run-id" id="run-id-badge"></span></h2>
         </div>
       </div>
-      <div class="legend" id="legend"></div>
-      <div id="detail"><span class="none">Click any node to see its role and the exact sentence it came from.</span></div>
-    </div>
+      <nav class="tabs" aria-label="Passage map views">
+        <button class="tab active" data-tab="understand">Understand</button>
+        <button class="tab" data-tab="context">Context</button>
+        <button class="tab" data-tab="argument">Argument</button>
+        <button class="tab" data-tab="evidence">Evidence</button>
+        <button class="tab" data-tab="voice">Voice</button>
+        <button class="tab" data-tab="questions">Questions</button>
+        <button class="tab" data-tab="audit">Audit</button>
+        <button class="tab" data-tab="graph">Graph</button>
+      </nav>
+      <div class="panel-shell">
+        <section class="tab-panel active" id="tab-understand"></section>
+        <section class="tab-panel" id="tab-context"></section>
+        <section class="tab-panel" id="tab-argument"></section>
+        <section class="tab-panel" id="tab-evidence"></section>
+        <section class="tab-panel" id="tab-voice"></section>
+        <section class="tab-panel" id="tab-questions"></section>
+        <section class="tab-panel" id="tab-audit"></section>
+        <section class="tab-panel web-panel" id="tab-graph">
+          <div class="web-bar">
+            <select id="edge-filter" title="Relation filter"></select>
+            <button class="ghost icon" id="tidy" title="Tidy layout">⤢</button>
+            <div class="grow"></div>
+            <button class="ghost icon" id="full" title="Full screen">⛶</button>
+          </div>
+          <div class="graph-wrap">
+            <svg id="graph"></svg>
+            <div class="controls">
+              <button id="zin" title="Zoom in">+</button>
+              <button id="zout" title="Zoom out">−</button>
+              <button id="zfit" title="Fit">⤢</button>
+            </div>
+          </div>
+          <div class="legend" id="legend"></div>
+          <div id="detail"><span class="none">No node selected.</span></div>
+        </section>
+      </div>
+    </section>
   </div>
 </main>
 
@@ -106,86 +327,768 @@ const SAMPLES = {
 };
 
 const ROLE_COLORS = {
-  thesis:"#6b4fbb", claim:"#1d8a6e", evidence:"#2f6f9e", counterpoint:"#c0492b", assumption:"#b8860b", definition:"#6b6a64", cause:"#b5701f", consequence:"#a85d8a", background:"#9a9890",
-  event:"#2f6f9e", character:"#6b4fbb", setting:"#9a9890", action:"#1d8a6e", motivation:"#b8860b", turn:"#c0492b", detail:"#b0aea6",
-  concept:"#6b4fbb", mechanism:"#1d8a6e", effect:"#a85d8a", condition:"#b8860b", example:"#2f8a5e"
+  thesis:"#6b4fbb", claim:"#1d8a6e", evidence:"#2f6f9e", counterpoint:"#b84832", assumption:"#b5701f", definition:"#6b6a64", cause:"#b5701f", consequence:"#a85d8a",
+  event:"#2f6f9e", character:"#6b4fbb", setting:"#8f8a80", action:"#1d8a6e", motivation:"#b5701f", turn:"#b84832", detail:"#8b8377", trigger:"#b84832", reaction:"#2f6f9e", denial:"#8f8a80", rationalization:"#b5701f", avoidance:"#a85d8a", residual_anxiety:"#6b4fbb",
+  concept:"#6b4fbb", mechanism:"#1d8a6e", effect:"#a85d8a", condition:"#b5701f", example:"#2f8a5e",
+  context:"#6b4fbb", place:"#5a86b5", ship:"#2f6f9e", object:"#8b8377", technical_term:"#b5701f", historical_reference:"#a85d8a", institution:"#6b4fbb", person:"#b84832", group:"#1d8a6e", anomaly:"#b84832", mystery_signal:"#6b4fbb", cultural_context:"#a85d8a", other:"#8b8377"
 };
-const EDGE_COLORS = { supports:"#2f8a5e", contradicts:"#c0392b", causes:"#2f6f9e", explains:"#8a887f", elaborates:"#8a887f", exemplifies:"#8a887f", qualifies:"#b8860b", then:"#5a86b5", foreshadows:"#a85fb0", reveals:"#2f8a5e", motivates:"#b8860b", contrasts:"#c0392b", enables:"#2f8a5e", requires:"#b8860b" };
-const LATERAL = new Set(["contradicts","contrasts"]);
-const DASHED  = new Set(["contradicts","contrasts","foreshadows"]);
+const EDGE_COLORS = { supports:"#2f8a5e", contradicts:"#c0392b", causes:"#2f6f9e", explains:"#8a887f", exemplifies:"#8a887f", qualifies:"#b8860b", then:"#5a86b5", foreshadows:"#a85fb0", reveals:"#2f8a5e", motivates:"#b8860b", contrasts:"#c0392b", enables:"#2f8a5e", requires:"#b8860b", contextualizes:"#6b4fbb", triggers:"#b84832", interrupts:"#b84832", rationalizes:"#b5701f", avoids:"#a85d8a", fails_to_resolve:"#6b4fbb", leaves_unresolved:"#6b4fbb", undercuts:"#c0392b", undercut_by:"#c0392b", depends_on:"#b8860b", residual_concern:"#6b4fbb" };
+const MODE_COLORS = { argument:"#6b4fbb", narrative:"#2f6f5e", explanatory:"#b5701f" };
+const VOICE_COLORS = { direct_speech:"#b5701f", internal_thought:"#2f6f9e", free_indirect_discourse:"#6b4fbb", reported_speech:"#6f6b62", narrator_description:"#8b8377", character_judgment:"#b84832" };
+function voiceColor(t){ return VOICE_COLORS[t] || "#6b6a64"; }
+function voiceTypeLabel(t){ const m={ direct_speech:"Direct speech", internal_thought:"Internal thought", free_indirect_discourse:"Free indirect", reported_speech:"Reported speech", narrator_description:"Narration", character_judgment:"Character judgment" }; return m[t] || t || "Voice"; }
+function speakerInitials(name){ const parts=String(name||"?").trim().split(/\s+/); return ((parts[0]?.[0]||"")+(parts.length>1?parts[parts.length-1][0]:"")).toUpperCase() || "?"; }
+const DASHED  = new Set(["contradicts","contrasts","foreshadows","qualifies","fails_to_resolve","leaves_unresolved","undercuts","undercut_by","residual_concern"]);
+const TENSION_TYPES = new Set(["contradicts","contrasts","qualifies","foreshadows","fails_to_resolve","leaves_unresolved","undercuts","undercut_by","residual_concern"]);
+const MODE_LANES = {
+  argument:["thesis","claim","evidence","assumption","counterpoint","consequence","definition","cause"],
+  narrative:["setting","trigger","reaction","action","denial","rationalization","avoidance","residual_anxiety","turn","character","motivation","event","detail"],
+  explanatory:["concept","definition","mechanism","condition","cause","effect","example"]
+};
+const MODE_COPY = {
+  argument:{ flow:"Argument spine", doing:"Reading takeaway", matters:"Why it matters", tension:"Core tension" },
+  narrative:{ flow:"Scene spine", doing:"Reading takeaway", matters:"Why it matters", tension:"Core tension" },
+  explanatory:{ flow:"Concept spine", doing:"Reading takeaway", matters:"Why it matters", tension:"Open tension" }
+};
 
 const $ = (id)=>document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
-let RAW="", N=[], E=[], byId={}, sel=null;
+let RAW="", DATA=null, N=[], E=[], byId={}, SPINE=[], sel=null, activeTab="understand";
+let RUNS=[], CURRENT_RUN=null, CTX=[], contextById={}, attachedContextIds=new Set(), selectedContextId=null;
+let VOICE=[], voiceById={}, voiceOverlay=false, selectedVoiceId=null;
 let svg, vp, VW=600, VH=460, raf=0;
 const view = { s:1, x:0, y:0 };
 
-function esc(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function esc(s){ return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function attr(s){ return esc(s).replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
 function color(role){ return ROLE_COLORS[role] || "#6b6a64"; }
+function modeCopy(key){ return MODE_COPY[DATA?.mode] ? MODE_COPY[DATA.mode][key] : MODE_COPY.explanatory[key]; }
+function nodeIndex(id){ return SPINE.indexOf(id); }
 
 function wrapLabel(label){
-  const words=(label||"node").split(/\s+/); const lines=[]; let cur="";
-  for(const w of words){ if(cur && (cur+" "+w).length>22){ lines.push(cur); cur=w; } else cur=cur?cur+" "+w:w; }
+  const words=String(label||"node").split(/\s+/).filter(Boolean);
+  const lines=[]; let cur="";
+  for(const w of words){ if(cur && (cur+" "+w).length>24){ lines.push(cur); cur=w; } else cur=cur?cur+" "+w:w; }
   if(cur) lines.push(cur);
-  const maxLen=Math.max(...lines.map(l=>l.length));
-  return { lines, w:Math.max(70, maxLen*6.7+22), h:lines.length*16+14 };
+  const safe=lines.length?lines:["node"];
+  const maxLen=Math.max(...safe.map(l=>l.length));
+  return { lines:safe, w:Math.max(96, Math.min(220, maxLen*6.8+26)), h:safe.length*16+18 };
+}
+
+function shortRunDate(iso){
+  if(!iso) return "";
+  const d=new Date(iso);
+  if(Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString([], { month:"short", day:"numeric", hour:"numeric", minute:"2-digit" });
+}
+function runTitle(run){ return run.title || run.output?.summary?.doing || run.text_preview || run.id; }
+function runMeta(run){
+  const bits=[];
+  if(run.mode) bits.push(run.mode);
+  if(run.node_count!=null) bits.push(`${run.node_count} nodes`);
+  if(run.context_count) bits.push(`${run.context_count} context`);
+  if(run.question_count) bits.push(`${run.question_count} questions`);
+  const when=shortRunDate(run.created_at);
+  if(when) bits.push(when);
+  return bits;
+}
+function runPayload(){
+  return CURRENT_RUN || {
+    id: DATA?.run_id || "unsaved",
+    created_at: DATA?.created_at || "",
+    requested_mode: DATA?.requested_mode || $("lens").value || "auto",
+    title: DATA?.title || DATA?.summary?.doing || "",
+    text: RAW,
+    output: DATA,
+  };
+}
+async function refreshRuns(activeId=CURRENT_RUN?.id){
+  try{
+    const res=await fetch("/api/runs");
+    const data=await res.json();
+    RUNS=Array.isArray(data.runs)?data.runs:[];
+  }catch{
+    RUNS=[];
+  }
+  renderRuns(activeId);
+}
+function renderRuns(activeId=CURRENT_RUN?.id){
+  const html = RUNS.length ? RUNS.map(run=>`
+    <button class="run-item ${run.id===activeId?'active':''}" data-run="${attr(run.id)}">
+      <span class="run-title">${esc(runTitle(run))}</span>
+      <span class="run-meta">${runMeta(run).map(esc).join("<span>·</span>")}</span>
+      <span class="run-id-mini">${esc(run.id)}</span>
+    </button>`).join("") : '<div class="run-empty">No saved runs yet.</div>';
+  ["home-runs-list","view-runs-list"].forEach(id=>{
+    const el=$(id);
+    if(!el) return;
+    el.innerHTML=html;
+    el.querySelectorAll("[data-run]").forEach(btn=>btn.addEventListener("click",()=>loadRun(btn.dataset.run)));
+  });
+}
+async function loadRun(id){
+  if(!id) return;
+  try{
+    const res=await fetch(`/api/runs/${encodeURIComponent(id)}`);
+    const run=await res.json();
+    if(run.error) throw new Error(run.error);
+    CURRENT_RUN=run;
+    RAW=run.text || "";
+    $("text").value=RAW;
+    $("lens").value=run.requested_mode || "auto";
+    build(run.output || {}, run);
+    await refreshRuns(run.id);
+  }catch(e){
+    $("hint").innerHTML='<span class="err">'+esc(e.message)+'</span>';
+  }
+}
+function startNew(){
+  CURRENT_RUN=null;
+  RAW="";
+  DATA=null;
+  CTX=[];
+  contextById={};
+  attachedContextIds=new Set();
+  selectedContextId=null;
+  $("text").value="";
+  $("model").textContent="";
+  $("run-id-badge").textContent="";
+  if(raf) cancelAnimationFrame(raf);
+  $("map-pane").classList.remove("expanded");
+  $("view").style.display="none";
+  $("input-view").style.display="grid";
+  $("go").disabled=false;
+  $("hint").textContent="Ready.";
+  renderRuns(null);
 }
 
 async function run(){
   const text=$("text").value.trim(); if(!text) return;
-  $("go").disabled=true; $("hint").innerHTML='<span class="spin"></span> mapping the ideas…';
+  $("go").disabled=true; $("hint").innerHTML='<span class="spin"></span> mapping...';
   try{
     const res=await fetch("/api/extract",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({text, mode:$("lens").value})});
     const data=await res.json(); if(data.error) throw new Error(data.error);
-    RAW=text; build(data);
+    RAW=text;
+    CURRENT_RUN={ id:data.run_id, created_at:data.created_at, requested_mode:data.requested_mode, title:data.title, text, output:data };
+    build(data, CURRENT_RUN);
+    await refreshRuns(data.run_id);
   }catch(e){ $("hint").innerHTML='<span class="err">'+esc(e.message)+'</span>'; $("go").disabled=false; }
 }
 
-function build(data){
-  $("model").textContent=data.model||"";
-  const mb=$("mode-badge");
-  if(data.mode){ mb.style.display="inline-block"; mb.textContent=data.mode; const cm={argument:"#6b4fbb",narrative:"#2f6f9e",explanatory:"#b5701f"}; const c=cm[data.mode]||"#555"; mb.style.background=c+"22"; mb.style.color=c; } else mb.style.display="none";
-  $("input-view").style.display="none"; $("view").style.display="grid";
-  $("src-text").textContent=RAW;
-  svg=$("graph"); measure();
+function build(data, run=null){
+  CURRENT_RUN = run || CURRENT_RUN;
+  DATA = normalizeData(data);
+  if(CURRENT_RUN?.output) CURRENT_RUN.output=DATA;
+  CTX = DATA.context_entities;
+  contextById={}; CTX.forEach(entity=>contextById[entity.id]=entity);
+  attachedContextIds = new Set(DATA.attached_context_ids || []);
+  selectedContextId = CTX[0]?.id || null;
+  VOICE = DATA.voice_events || [];
+  voiceById={}; VOICE.forEach(v=>voiceById[v.id]=v);
+  selectedVoiceId = null;
+  voiceOverlay = DATA.mode==="narrative" && VOICE.length>0;
+  const vtBtn=$("voice-toggle"); if(vtBtn) vtBtn.style.display = VOICE.length ? "inline-flex" : "none";
+  updateVoiceToggle();
+  $("model").textContent=DATA.model||"";
+  $("run-id-badge").textContent=CURRENT_RUN?.id || DATA.run_id || "";
+  renderModeBadge();
+  $("input-view").style.display="none";
+  $("view").style.display="grid";
+  renderSource();
+  setActiveTab("understand", false);
 
-  const ids=new Set(data.nodes.map(n=>n.id));
-  N = data.nodes.map(n=>{ const wl=wrapLabel(n.label); return { ...n, lines:wl.lines, w:wl.w, h:wl.h, x:0, y:0, fixed:false }; });
-  E = (data.edges||[]).filter(e=>ids.has(e.from)&&ids.has(e.to));
+  N = graphNodesForData();
   byId={}; N.forEach(n=>byId[n.id]=n);
-  E.forEach(e=>{ e.a=byId[e.from]; e.b=byId[e.to]; });
+  E = graphEdgesForData();
 
-  legend(); draw(); sel=null; detail(null); layout(true);
+  renderUnderstand();
+  renderContext();
+  renderArgument();
+  renderEvidence();
+  renderVoice();
+  renderQuestions();
+  renderAudit();
+  renderEdgeFilter();
+  svg=$("graph");
+  draw();
+  legend();
+  sel=null;
+  detail(null);
+  layout(true);
 }
+
+function normalizeData(data){
+  const nodes = Array.isArray(data.nodes) ? data.nodes.filter(n=>n && n.id).map(n=>({ ...n, quote:n.quote || n.source_quote || "" })) : [];
+  const ids = new Set(nodes.map(n=>n.id));
+  const edges = Array.isArray(data.edges) ? data.edges.filter(e=>ids.has(e.from)&&ids.has(e.to)) : [];
+  let spine = Array.isArray(data.spine) ? data.spine.filter(id=>ids.has(id)) : [];
+  if(!spine.length) spine = deriveSpine(nodes, edges).map(n=>n.id);
+  SPINE = spine.slice(0,7);
+  const contextEntities = Array.isArray(data.context_entities)
+    ? data.context_entities.filter(entity=>entity && entity.id).map(entity=>{
+      const status=entity.interpretation_status || (entity.narrative_function || entity.symbolic_role ? "inferred_from_context" : "stated");
+      return { ...entity, quote:entity.quote || entity.source_quote || entity.label || "", interpretation_status:status, attach_to:Array.isArray(entity.attach_to)?entity.attach_to.filter(id=>ids.has(id)):[] };
+    })
+    : [];
+  const contextIds = new Set(contextEntities.map(entity=>entity.id));
+  const attached = Array.isArray(data.attached_context_ids) ? data.attached_context_ids.filter(id=>contextIds.has(id)) : [];
+  const voiceEvents = Array.isArray(data.voice_events)
+    ? data.voice_events.filter(v=>v && v.id && v.quote).map(v=>({ ...v, attach_to:Array.isArray(v.attach_to)?v.attach_to.filter(id=>ids.has(id)):[] }))
+    : [];
+  return { ...data, mode:data.mode || "explanatory", summary:data.summary || {}, questions:Array.isArray(data.questions)?data.questions:[], context_entities:contextEntities, voice_events:voiceEvents, attached_context_ids:attached, nodes, edges, spine:SPINE };
+}
+
+function deriveSpine(nodes, edges){
+  const incoming={}; nodes.forEach(n=>incoming[n.id]=0); edges.forEach(e=>incoming[e.to]=(incoming[e.to]||0)+1);
+  const sourceOrder=[...nodes].sort((a,b)=>(a.source_start ?? 1e9)-(b.source_start ?? 1e9));
+  const roots=sourceOrder.filter(n=>(incoming[n.id]||0)===0);
+  return (roots.length?roots:sourceOrder).concat(sourceOrder.filter(n=>!(roots.includes(n)))).slice(0,7);
+}
+
+function contextGraphId(id){ return `ctx:${id}`; }
+function graphNodesForData(){
+  const base=DATA.nodes.map(n=>{
+    const wl=wrapLabel(n.label);
+    return { ...n, graph_kind:"structure", lines:wl.lines, w:wl.w + (SPINE.includes(n.id)?16:0), h:wl.h + (SPINE.includes(n.id)?4:0), x:0, y:0, fixed:false };
+  });
+  const attached=CTX.filter(entity=>attachedContextIds.has(entity.id)).map(entity=>{
+    const wl=wrapLabel(entity.label);
+    const role=entity.kind || "context";
+    return {
+      id:contextGraphId(entity.id),
+      context_id:entity.id,
+      label:entity.label,
+      role,
+      quote:entity.quote,
+      source_start:entity.source_start,
+      source_end:entity.source_end,
+      grounding:entity.grounding,
+      graph_kind:"context",
+      lines:wl.lines,
+      w:Math.max(104, wl.w),
+      h:wl.h+6,
+      x:0,
+      y:0,
+      fixed:false
+    };
+  });
+  return base.concat(attached);
+}
+function graphEdgesForData(){
+  const structural=DATA.edges.filter(e=>byId[e.from]&&byId[e.to]).map(e=>({ ...e, a:byId[e.from], b:byId[e.to] }));
+  const contextEdges=[];
+  CTX.filter(entity=>attachedContextIds.has(entity.id)).forEach(entity=>{
+    const from=contextGraphId(entity.id);
+    const targets=(entity.attach_to && entity.attach_to.length ? entity.attach_to : SPINE.slice(0,1)).filter(id=>byId[id]);
+    targets.forEach(to=>{
+      if(byId[from] && byId[to]) contextEdges.push({ from, to, type:"contextualizes", a:byId[from], b:byId[to] });
+    });
+  });
+  return structural.concat(contextEdges);
+}
+
+function renderModeBadge(){
+  const mb=$("mode-badge");
+  if(!DATA?.mode){ mb.style.display="none"; return; }
+  const c=MODE_COLORS[DATA.mode]||"#555";
+  mb.style.display="inline-block"; mb.textContent=DATA.mode; mb.style.background=c+"22"; mb.style.color=c;
+}
+
+function sourceRanges(selected){
+  const out=[];
+  const sel=(selected?.source_start!=null && selected?.source_end!=null) ? { source_start:selected.source_start, source_end:selected.source_end, type:"selected" } : null;
+  if(sel) out.push(sel);
+  const cands=[];
+  if(voiceOverlay){
+    VOICE.filter(v=>v.source_start!=null && v.source_end!=null && v.source_end>v.source_start)
+      .forEach(v=>cands.push({ source_start:v.source_start, source_end:v.source_end, type:"voice", id:v.id, voice_type:v.voice_type, label:v.speaker, priority:2 }));
+  }
+  CTX.filter(entity=>entity.source_start!=null && entity.source_end!=null && entity.source_end>entity.source_start)
+    .forEach(entity=>cands.push({ source_start:entity.source_start, source_end:entity.source_end, type:"context", id:entity.id, label:entity.label, priority:1 }));
+  cands.sort((a,b)=> a.source_start-b.source_start || b.priority-a.priority || (b.source_end-b.source_start)-(a.source_end-a.source_start));
+  const selStart=sel?.source_start, selEnd=sel?.source_end;
+  let last=-1;
+  for(const c of cands){
+    if(sel && !(c.source_end<=selStart || c.source_start>=selEnd)) continue;
+    if(c.source_start < last) continue;
+    out.push(c); last=c.source_end;
+  }
+  return out.sort((a,b)=> a.source_start-b.source_start || a.source_end-b.source_end);
+}
+function renderSource(selected=null){
+  const ranges=sourceRanges(selected);
+  if(!ranges.length){ $("src-text").textContent=RAW; return; }
+  let html="", pos=0;
+  for(const range of ranges){
+    html+=esc(RAW.slice(pos, range.source_start));
+    const text=esc(RAW.slice(range.source_start, range.source_end));
+    if(range.type==="selected") html+=`<mark>${text}</mark>`;
+    else if(range.type==="voice") html+=`<button class="voice-mark voice-${attr(range.voice_type)} ${range.id===selectedVoiceId?'active':''}" data-voice="${attr(range.id)}" title="${attr(range.label + ' — ' + (voiceById[range.id]?.function || voiceTypeLabel(range.voice_type)))}">${text}</button>`;
+    else html+=`<button class="context-mark ${range.id===selectedContextId?'active':''}" data-context="${attr(range.id)}" title="${attr(range.label)}">${text}</button>`;
+    pos=range.source_end;
+  }
+  html+=esc(RAW.slice(pos));
+  const src=$("src-text");
+  src.innerHTML=html;
+  src.querySelectorAll("[data-context]").forEach(btn=>btn.addEventListener("click",()=>selectContext(btn.dataset.context)));
+  src.querySelectorAll("[data-voice]").forEach(btn=>btn.addEventListener("click",()=>selectVoice(btn.dataset.voice)));
+  const active=src.querySelector(".context-mark.active, .voice-mark.active");
+  if(active) active.scrollIntoView({ behavior:"smooth", block:"center" });
+}
+function selectContext(id){
+  if(!contextById[id]) return;
+  selectedContextId=id;
+  renderSource();
+  renderContext();
+  setActiveTab("context");
+}
+
+function renderUnderstand(){
+  const s=DATA.summary || {};
+  const spineNodes=SPINE.map(id=>DATA.nodes.find(n=>n.id===id)).filter(Boolean);
+  const highContext=CTX.filter(entity=>entity.importance==="high").slice(0,5);
+  $("tab-understand").innerHTML = `
+    <div class="lens-stack">
+      <article class="reading-card primary">
+        <h3>${esc(modeCopy("doing"))}</h3>
+        <p>${esc(s.doing || "No interpretation returned.")}</p>
+      </article>
+      <article class="reading-card">
+        <h3>${esc(modeCopy("flow"))}</h3>
+        <div class="spine-row">
+          ${spineNodes.map((n,i)=>`${i?'<span class="arrow">→</span>':""}<button class="spine-chip" data-node="${attr(n.id)}"><strong>${esc(n.label)}</strong><span>${esc(roleName(n.role))}</span></button>`).join("") || '<p class="empty">No spine returned.</p>'}
+        </div>
+      </article>
+      <article class="reading-card">
+        <h3>${esc(modeCopy("matters"))}</h3>
+        <p>${esc(s.matters || "No stakes returned.")}</p>
+      </article>
+      <article class="reading-card">
+        <h3>${esc(modeCopy("tension"))}</h3>
+        <p>${s.tension ? esc(s.tension) : '<span class="empty">No central tension extracted.</span>'}</p>
+      </article>
+      ${highContext.length ? `<article class="reading-card"><h3>Context that matters</h3><div class="spine-row">${highContext.map(entity=>`<button class="spine-chip" data-context="${attr(entity.id)}"><strong>${esc(entity.label)}</strong><span>${esc(entity.narrative_function || roleName(entity.kind || "context"))}</span></button>`).join("")}</div></article>` : ""}
+    </div>`;
+  bindNodeButtons($("tab-understand"));
+  bindContextButtons($("tab-understand"));
+}
+
+function renderContext(){
+  const selected=contextById[selectedContextId] || CTX[0];
+  if(selected && selected.id!==selectedContextId) selectedContextId=selected.id;
+  const list=CTX.length ? CTX.map(entity=>`
+    <button class="context-item ${entity.id===selectedContextId?'active':''}" data-context="${attr(entity.id)}" style="border-left-color:${color(entity.kind || "context")}">
+      <span>${esc(roleName(entity.kind || "context"))} · ${esc(entity.importance || "medium")} · ${esc(interpretationLabel(entity.interpretation_status))}</span>
+      <strong>${esc(entity.label)}</strong>
+      <span>${esc(entity.narrative_function || pinLabel(entity))}</span>
+    </button>`).join("") : '<div class="run-empty">No contextual entities were extracted for this run.</div>';
+  $("tab-context").innerHTML = `
+    <div class="context-grid">
+      <div class="context-list">${list}</div>
+      ${selected ? contextDetail(selected) : '<article class="context-detail"><p class="empty">Select a highlighted term in the source or a context item here.</p></article>'}
+    </div>`;
+  bindContextButtons($("tab-context"));
+  const attach=$("context-attach");
+  if(attach) attach.onclick=()=>toggleAttachContext(selected.id);
+}
+
+function contextDetail(entity){
+  const attached=attachedContextIds.has(entity.id);
+  const attachedTo=(entity.attach_to||[]).map(id=>DATA.nodes.find(n=>n.id===id)?.label).filter(Boolean);
+  const maps=entity.map_query ? `<a href="https://www.google.com/maps/search/${encodeURIComponent(entity.map_query)}" target="_blank" rel="noreferrer">Show on map</a>` : "";
+  const web=`<a href="https://www.google.com/search?q=${encodeURIComponent(entity.label)}" target="_blank" rel="noreferrer">Search web</a>`;
+  const definition=entity.definition ? `<details><summary>Dictionary-style definition</summary><p>${esc(entity.definition)}</p></details>` : "";
+  const tags=[
+    roleName(entity.kind || "context"),
+    pinLabel(entity),
+    interpretationLabel(entity.interpretation_status),
+    attached ? "user attached" : ""
+  ].filter(Boolean);
+  const roleNotes=[
+    ["Function here", entity.narrative_function],
+    ["Symbolic role", entity.symbolic_role]
+  ].filter(([,value])=>value);
+  return `<article class="context-detail">
+    <div class="kind">${esc(roleName(entity.kind || "context"))}</div>
+    <h3>${esc(entity.label)}</h3>
+    <div class="context-tags">${tags.map(tag=>`<span class="relation-chip">${esc(tag)}</span>`).join("")}</div>
+    <p>${esc(entity.explanation || "No contextual explanation returned.")}</p>
+    ${roleNotes.length ? `<div class="context-note">${roleNotes.map(([label,value])=>`<p><span class="relation-chip">${esc(label)}</span> ${esc(value)}</p>`).join("")}</div>` : ""}
+    <details open>
+      <summary>Richer context</summary>
+      <p>${esc(entity.deeper_context || "No deeper context returned.")}</p>
+    </details>
+    ${definition}
+    <p><span class="relation-chip">Attached to</span> ${attachedTo.length ? esc(attachedTo.join("; ")) : "No suggested diagram attachment."}</p>
+    ${entity.quote ? `<p class="quote">“${esc(entity.quote)}”</p>` : ""}
+    <div class="context-actions">
+      <button id="context-attach">${attached ? "Detach from diagram" : "Attach to diagram"}</button>
+      ${maps}
+      ${web}
+    </div>
+  </article>`;
+}
+
+function bindContextButtons(root){
+  root.querySelectorAll("[data-context]").forEach(btn=>btn.addEventListener("click",()=>selectContext(btn.dataset.context)));
+}
+
+async function toggleAttachContext(id){
+  if(!contextById[id]) return;
+  if(attachedContextIds.has(id)) attachedContextIds.delete(id);
+  else attachedContextIds.add(id);
+  DATA.attached_context_ids=[...attachedContextIds];
+  if(CURRENT_RUN?.output) CURRENT_RUN.output.attached_context_ids=DATA.attached_context_ids;
+  N=graphNodesForData();
+  byId={}; N.forEach(n=>byId[n.id]=n);
+  E=graphEdgesForData();
+  renderContext();
+  renderAudit();
+  renderEdgeFilter();
+  draw();
+  legend();
+  layout(true);
+  await persistContextAttachments();
+}
+
+async function persistContextAttachments(){
+  if(!CURRENT_RUN?.id || CURRENT_RUN.id==="unsaved") return;
+  try{
+    await fetch(`/api/runs/${encodeURIComponent(CURRENT_RUN.id)}/context-attachments`, {
+      method:"POST",
+      headers:{ "content-type":"application/json" },
+      body:JSON.stringify({ ids:[...attachedContextIds] })
+    });
+    await refreshRuns(CURRENT_RUN.id);
+  }catch{
+    // Attachment still works locally; persistence can be retried by toggling again.
+  }
+}
+
+function renderArgument(){
+  if(DATA.mode==="argument") return renderArgumentMap();
+  const lanes=(MODE_LANES[DATA.mode]||MODE_LANES.explanatory).filter(role=>DATA.nodes.some(n=>n.role===role));
+  const laneSet=new Set(lanes);
+  const sequence=SPINE.map((id,i)=>byDataId(id) || DATA.nodes.find(n=>n.id===id)).filter(Boolean);
+  const cols=Math.max(1, sequence.length);
+  const rows=lanes.map(role=>{
+    const cells=sequence.map(n=>n.role===role ? nodeCard(n) : '<div class="flow-node blank"></div>').join("");
+    return `<div class="lane-label">${esc(roleName(role))}</div><div class="lane-track" style="grid-template-columns:repeat(${cols},minmax(110px,1fr))">${cells}</div>`;
+  }).join("");
+  const supporting=DATA.nodes.filter(n=>!SPINE.includes(n.id) && !laneSet.has(n.role)).slice(0,4);
+  $("tab-argument").innerHTML = `
+    <div class="flow-toolbar"><div class="flow-title">${esc(modeCopy("flow"))}</div></div>
+    <div style="overflow:auto"><div class="lane-board">${rows || '<div class="lane-label">Spine</div><div class="lane-track">No flow returned.</div>'}</div></div>
+    ${supporting.length ? `<div class="reading-card" style="margin-top:14px"><h3>Supporting details</h3><div class="evidence-list">${supporting.map(nodeCard).join("")}</div></div>` : ""}`;
+  bindNodeButtons($("tab-argument"));
+}
+
+function renderArgumentMap(){
+  const spineNodes=SPINE.map(id=>DATA.nodes.find(n=>n.id===id)).filter(Boolean);
+  const stepHtml=spineNodes.map((n,i)=>{
+    const next=spineNodes[i+1];
+    const rel=next ? relationBetween(n.id,next.id) : "";
+    return `<button class="role-step" data-node="${attr(n.id)}" style="border-left-color:${color(n.role)}">
+      <span class="step-role">${esc(roleName(n.role))}</span>
+      <span><span class="step-label">${esc(n.label)}</span>${rel?`<span class="step-rel">${esc(rel)} →</span>`:""}</span>
+    </button>`;
+  }).join("");
+  const groups = [
+    { title:"Claim", roles:["thesis","claim","definition"] },
+    { title:"Reason / evidence", roles:["evidence","cause","assumption"] },
+    { title:"Challenge / stakes", roles:["counterpoint","consequence"] }
+  ];
+  const html=groups.map(g=>{
+    const items=DATA.nodes.filter(n=>g.roles.includes(n.role));
+    return `<section class="argument-col"><h3>${esc(g.title)}</h3><div class="bucket">${items.map(nodeCard).join("") || '<div class="hint">None extracted.</div>'}</div></section>`;
+  }).join("");
+  $("tab-argument").innerHTML = `
+    <article class="reading-card primary">
+      <h3>Argument spine</h3>
+      <p>${esc(DATA.summary?.doing || "No interpretation returned.")}</p>
+      <div class="role-spine">${stepHtml || '<p class="empty">No spine returned.</p>'}</div>
+    </article>
+    <div class="flow-toolbar" style="margin-top:14px"><div class="flow-title">Roles in the passage</div></div>
+    <div class="argument-grid">${html}</div>`;
+  bindNodeButtons($("tab-argument"));
+}
+
+function renderQuestions(){
+  const s=DATA.summary || {};
+  const tensionEdges=DATA.edges.filter(e=>TENSION_TYPES.has(e.type));
+  const pairs=tensionEdges.map(e=>{
+    const a=DATA.nodes.find(n=>n.id===e.from), b=DATA.nodes.find(n=>n.id===e.to);
+    if(!a || !b) return "";
+    return `<div class="pair">${nodeCard(a)}<div class="pair-mid">${esc(relationLabel(e.type))}</div>${nodeCard(b)}</div>`;
+  }).join("");
+  const questions=questionsForRun();
+  $("tab-questions").innerHTML = `
+    <section class="tension-lead">
+      <h3>${esc(modeCopy("tension"))}</h3>
+      <p>${s.tension ? esc(s.tension) : "No central tension extracted."}</p>
+    </section>
+    <article class="reading-card">
+      <h3>What is missing?</h3>
+      <div class="missing-list">${questions.map(q=>`<div class="missing-item"><span>${esc(q)}</span></div>`).join("")}</div>
+    </article>
+    ${pairs ? `<div class="flow-toolbar" style="margin-top:14px"><div class="flow-title">Visible tensions</div></div><div class="pair-list">${pairs}</div>` : ""}`;
+  bindNodeButtons($("tab-questions"));
+}
+
+function renderEvidence(){
+  const nodes=[...DATA.nodes].sort((a,b)=>(a.source_start ?? 1e9)-(b.source_start ?? 1e9));
+  $("tab-evidence").innerHTML = `<div class="evidence-list">${nodes.map(evidenceItem).join("")}</div>`;
+  bindNodeButtons($("tab-evidence"));
+}
+
+function voiceItem(v){
+  const c=voiceColor(v.voice_type);
+  return `<button class="voice-line ${v.id===selectedVoiceId?'active':''}" data-voice="${attr(v.id)}" style="border-left-color:${c}">
+    <div class="voice-top"><span class="voice-badge" style="background:${c}">${esc(voiceTypeLabel(v.voice_type))}</span>${v.tone?`<span class="voice-tone">${esc(v.tone)}</span>`:""}${v.grounding && v.grounding!=="pinned"?`<span class="voice-tone">· ${esc(v.grounding==="weak"?"weak match":"source not located")}</span>`:""}</div>
+    <div class="voice-quote">“${esc(v.quote)}”</div>
+    ${v.function?`<div class="voice-fn">${esc(v.function)}</div>`:""}
+  </button>`;
+}
+function renderVoice(){
+  if(!VOICE.length){
+    $("tab-voice").innerHTML = `<article class="reading-card"><h3>Character voice</h3><p class="empty">No distinct character voice detected. This passage may be plain narration, dialogue-free, or a non-narrative text.</p></article>`;
+    return;
+  }
+  const legendTypes=[...new Set(VOICE.map(v=>v.voice_type))];
+  const groups={}; VOICE.forEach(v=>{ (groups[v.speaker||"Unattributed"] ||= []).push(v); });
+  const speakers=Object.keys(groups).sort((a,b)=>groups[b].length-groups[a].length);
+  const html=speakers.map(sp=>{
+    const items=groups[sp].slice().sort((a,b)=>(a.source_start ?? 1e9)-(b.source_start ?? 1e9));
+    const c=voiceColor(items[0].voice_type);
+    return `<section class="voice-group">
+      <div class="voice-speaker"><span class="avatar" style="background:${c}">${esc(speakerInitials(sp))}</span>${esc(sp)}<span class="count">${items.length} ${items.length===1?"line":"lines"}</span></div>
+      <div class="voice-lines">${items.map(voiceItem).join("")}</div>
+    </section>`;
+  }).join("");
+  $("tab-voice").innerHTML = `
+    <div class="flow-toolbar"><div class="flow-title">Who says / thinks / judges what</div><button class="ghost" id="voice-overlay-btn">${voiceOverlay?"Hide in source":"Highlight in source"}</button></div>
+    <div class="voice-legend">${legendTypes.map(t=>`<span><i style="background:${voiceColor(t)}"></i>${esc(voiceTypeLabel(t))}</span>`).join("")}</div>
+    ${html}`;
+  $("tab-voice").querySelectorAll("[data-voice]").forEach(el=>el.addEventListener("click",()=>selectVoice(el.dataset.voice)));
+  const ob=$("voice-overlay-btn");
+  if(ob) ob.onclick=()=>{ voiceOverlay=!voiceOverlay; updateVoiceToggle(); renderSource(); renderVoice(); };
+}
+function selectVoice(id){
+  const v=voiceById[id]; if(!v) return;
+  selectedVoiceId=id;
+  if(!voiceOverlay){ voiceOverlay=true; updateVoiceToggle(); }
+  renderSource();
+  renderVoice();
+  if(activeTab!=="voice") setActiveTab("voice");
+}
+function updateVoiceToggle(){
+  const b=$("voice-toggle"); if(!b) return;
+  b.style.background = voiceOverlay ? "#efe9ff" : "var(--surface)";
+  b.style.color = voiceOverlay ? "#4f35a3" : "var(--ink)";
+  b.title = voiceOverlay ? "Hide character voice" : "Show character voice";
+}
+
+function renderAudit(){
+  const run=runPayload();
+  const nodes=Array.isArray(DATA.nodes)?DATA.nodes:[];
+  const edges=Array.isArray(DATA.edges)?DATA.edges:[];
+  const counts=nodes.reduce((acc,n)=>{ const k=n.grounding||"unknown"; acc[k]=(acc[k]||0)+1; return acc; }, {});
+  const contextCounts=CTX.reduce((acc,entity)=>{ const k=entity.kind||"context"; acc[k]=(acc[k]||0)+1; return acc; }, {});
+  const statusCounts=CTX.reduce((acc,entity)=>{ const k=interpretationLabel(entity.interpretation_status); acc[k]=(acc[k]||0)+1; return acc; }, {});
+  const payload=JSON.stringify(run, null, 2);
+  $("tab-audit").innerHTML = `
+    <div class="audit-grid">
+      <div class="audit-stat"><span>Run ID</span><strong title="${attr(run.id)}">${esc(run.id)}</strong></div>
+      <div class="audit-stat"><span>Created</span><strong>${esc(shortRunDate(run.created_at) || "unknown")}</strong></div>
+      <div class="audit-stat"><span>Model</span><strong title="${attr(DATA.model || "")}">${esc(DATA.model || "unknown")}</strong></div>
+      <div class="audit-stat"><span>Mode</span><strong>${esc(DATA.mode || "unknown")}</strong></div>
+      <div class="audit-stat"><span>Nodes</span><strong>${nodes.length}</strong></div>
+      <div class="audit-stat"><span>Edges</span><strong>${edges.length}</strong></div>
+      <div class="audit-stat"><span>Spine</span><strong>${SPINE.length}</strong></div>
+      <div class="audit-stat"><span>Grounding</span><strong>${esc(Object.entries(counts).map(([k,v])=>`${k}:${v}`).join(" ") || "none")}</strong></div>
+      <div class="audit-stat"><span>Context</span><strong>${CTX.length}</strong></div>
+      <div class="audit-stat"><span>Attached</span><strong>${attachedContextIds.size}</strong></div>
+      <div class="audit-stat"><span>Context types</span><strong>${esc(Object.entries(contextCounts).map(([k,v])=>`${k}:${v}`).join(" ") || "none")}</strong></div>
+      <div class="audit-stat"><span>Interpretation</span><strong>${esc(Object.entries(statusCounts).map(([k,v])=>`${k}:${v}`).join(" ") || "none")}</strong></div>
+    </div>
+    <div class="audit-actions">
+      <button id="copy-audit">Copy JSON</button>
+      <button id="reprocess-run" class="ghost">Reprocess with latest schema</button>
+      <span class="hint" id="audit-copy-status"></span>
+      <div class="grow"></div>
+    </div>
+    <pre class="audit-json">${esc(payload)}</pre>`;
+  const copy=$("copy-audit");
+  copy.onclick=async()=>{
+    try{
+      await navigator.clipboard.writeText(payload);
+      $("audit-copy-status").textContent="Copied.";
+    }catch{
+      $("audit-copy-status").textContent="Copy failed.";
+    }
+  };
+  const reprocess=$("reprocess-run");
+  reprocess.onclick=reprocessCurrentRun;
+}
+
+async function reprocessCurrentRun(){
+  if(!CURRENT_RUN?.id || CURRENT_RUN.id==="unsaved") return;
+  const btn=$("reprocess-run");
+  const status=$("audit-copy-status");
+  try{
+    btn.disabled=true;
+    status.innerHTML='<span class="spin"></span> reprocessing...';
+    const res=await fetch(`/api/runs/${encodeURIComponent(CURRENT_RUN.id)}/reprocess`, { method:"POST" });
+    const run=await res.json();
+    if(run.error) throw new Error(run.error);
+    CURRENT_RUN=run;
+    RAW=run.text || "";
+    $("text").value=RAW;
+    $("lens").value=run.requested_mode || "auto";
+    build(run.output || {}, run);
+    await refreshRuns(run.id);
+    setActiveTab("audit");
+  }catch(e){
+    status.innerHTML='<span class="err">'+esc(e.message)+'</span>';
+  }finally{
+    if(btn) btn.disabled=false;
+  }
+}
+
+function byDataId(id){ return DATA.nodes.find(n=>n.id===id); }
+function roleName(role){
+  const names={
+    thesis:"Main claim", claim:"Claim", evidence:"Evidence", counterpoint:"Counterpoint", assumption:"Assumption", definition:"Definition", cause:"Cause", consequence:"Consequence",
+    event:"Event", character:"Character", setting:"Setting", action:"Action", motivation:"Motivation", turn:"Turn", detail:"Detail", trigger:"Trigger", reaction:"Reaction", denial:"Denial", rationalization:"Rationalization", avoidance:"Avoidance", residual_anxiety:"Residual anxiety",
+    concept:"Concept", mechanism:"Mechanism", effect:"Effect", condition:"Condition", example:"Example",
+    place:"Place", ship:"Ship", object:"Object", technical_term:"Technical term", historical_reference:"Historical reference", institution:"Institution", person:"Person", group:"Group", anomaly:"Anomaly", mystery_signal:"Mystery signal", cultural_context:"Cultural context", other:"Other context", context:"Context"
+  };
+  return names[role] || role || "Node";
+}
+function relationBetween(from,to){
+  const e=DATA.edges.find(x=>x.from===from && x.to===to) || DATA.edges.find(x=>x.to===from && x.from===to);
+  return e ? relationLabel(e.type) : "";
+}
+function relationLabel(type){
+  const labels={
+    supports:"supports", contradicts:"challenges", causes:"leads to", explains:"explains", exemplifies:"example of", qualifies:"qualifies",
+    then:"then", foreshadows:"foreshadows", reveals:"reveals", motivates:"motivates", contrasts:"contrasts with", enables:"enables", requires:"requires",
+    triggers:"triggers", interrupts:"interrupts", rationalizes:"rationalizes", avoids:"avoids", fails_to_resolve:"fails to resolve", leaves_unresolved:"leaves unresolved", undercuts:"undercuts", undercut_by:"undercut by", depends_on:"depends on", contextualizes:"context for", residual_concern:"leaves concern"
+  };
+  return labels[type] || type || "relates to";
+}
+function incomingFor(id){
+  return DATA.edges.filter(e=>e.to===id).map(e=>DATA.nodes.find(n=>n.id===e.from)).filter(Boolean);
+}
+function outgoingFor(id){
+  return DATA.edges.filter(e=>e.from===id).map(e=>DATA.nodes.find(n=>n.id===e.to)).filter(Boolean);
+}
+function questionsForRun(){
+  const qs=Array.isArray(DATA.questions) ? DATA.questions.filter(Boolean) : [];
+  if(qs.length) return qs.slice(0,6);
+  const mode=DATA.mode;
+  if(mode==="argument") return [
+    "What evidence would show that the main claim is actually true?",
+    "What assumption connects the stated reason to the conclusion?",
+    "Who benefits from the proposal, and who bears the cost?",
+    "What counterexample would weaken this argument?"
+  ];
+  if(mode==="narrative") return [
+    "What unresolved problem or mystery does this scene create?",
+    "What does this passage reveal about the character's motives?",
+    "Which detail is likely to matter later?",
+    "What changed between the start and end of the scene?"
+  ];
+  return [
+    "What condition would make this explanation fail?",
+    "What evidence would verify the mechanism described here?",
+    "Which concept does the reader need to understand first?",
+    "What is implied but not directly stated?"
+  ];
+}
+function badge(role){ return `<span class="badge" style="background:${color(role)}">${esc(roleName(role)||"node")}</span>`; }
+function pinLabel(n){ return n.grounding==="unpinned" ? "unlocated" : n.grounding==="weak" ? "weak" : "source"; }
+function interpretationLabel(status){
+  const labels={ stated:"stated", inferred_from_context:"inferred", external_context:"external context", user_attached:"user attached" };
+  return labels[status] || status || "stated";
+}
+function nodeCard(n){
+  return `<button class="flow-node" data-node="${attr(n.id)}" style="border-left-color:${color(n.role)}">
+    <span class="role">${esc(roleName(n.role))}</span><span class="label">${esc(n.label)}</span>
+  </button>`;
+}
+function evidenceItem(n){
+  const incoming=incomingFor(n.id);
+  const outgoing=outgoingFor(n.id);
+  const depends=incoming.length ? incoming.map(x=>x.label).join("; ") : "No prior extracted node.";
+  const leads=outgoing.length ? outgoing.map(x=>x.label).join("; ") : "No outgoing extracted relation.";
+  const status=n.grounding==="pinned" ? "stated in source; role/relation inferred" : n.grounding==="weak" ? "weakly source-matched; audit before trusting" : "not located; audit before trusting";
+  return `<article class="evidence-item" data-node="${attr(n.id)}">
+    <div class="evidence-top">${badge(n.role)}<span class="pin">${esc(pinLabel(n))}</span></div>
+    <strong>${esc(n.label)}</strong>
+    <div class="evidence-more">
+      <span><b>Source status:</b> ${esc(status)}</span>
+      <span><b>Depends on:</b> ${esc(depends)}</span>
+      <span><b>Leads to:</b> ${esc(leads)}</span>
+      <span><b>Needs evidence:</b> ${esc(questionsForRun()[0] || "No follow-up question returned.")}</span>
+    </div>
+    ${n.quote ? `<div class="quote">“${esc(n.quote)}”</div>` : ""}
+  </article>`;
+}
+function bindNodeButtons(root){
+  root.querySelectorAll("[data-node]").forEach(el=>el.addEventListener("click",()=>focusNode(el.dataset.node)));
+}
+function focusNode(id){
+  const n=byId[id] || DATA.nodes.find(x=>x.id===id);
+  if(!n) return;
+  detail(n);
+  highlight(n);
+  if(activeTab==="graph" && byId[id]) select(byId[id], false);
+}
+
+function renderEdgeFilter(){
+  const types=[...new Set(E.map(e=>e.type))];
+  $("edge-filter").innerHTML = `<option value="all">All relations</option><option value="spine">Spine only</option>${types.map(t=>`<option value="${attr(t)}">${esc(relationLabel(t))}</option>`).join("")}`;
+  $("edge-filter").value="all";
+  $("edge-filter").onchange=applyEdgeFilter;
+}
+
 function measure(){ const r=svg.getBoundingClientRect(); VW=r.width||600; VH=r.height||460; }
 
 function legend(){
   const uR=[...new Set(N.map(n=>n.role))], uE=[...new Set(E.map(e=>e.type))];
-  $("legend").innerHTML = uR.map(r=>`<span><i style="background:${color(r)}"></i>${r}</span>`).join("") + uE.map(t=>`<span><i style="background:${EDGE_COLORS[t]||'#8a887f'};border-radius:1px;height:3px;width:14px"></i>${t}</span>`).join("");
+  $("legend").innerHTML = uR.map(r=>`<span><i style="background:${color(r)}"></i>${esc(roleName(r))}</span>`).join("") + uE.map(t=>`<span><i style="background:${EDGE_COLORS[t]||'#8a887f'};border-radius:1px;height:3px;width:14px"></i>${esc(relationLabel(t))}</span>`).join("");
 }
 
-// ---- layered layout on a real (unbounded) world canvas -------------------
-function layout(fit){
-  const flow = E.filter(e=>!LATERAL.has(e.type));
-  const nb={}; N.forEach(n=>nb[n.id]=[]); E.forEach(e=>{ nb[e.from].push(e.to); nb[e.to].push(e.from); });
-  const layer={}; N.forEach(n=>layer[n.id]=0);
-  for(let it=0; it<N.length+1; it++){ let ch=false; flow.forEach(e=>{ if(layer[e.to]<layer[e.from]+1){ layer[e.to]=layer[e.from]+1; ch=true; } }); if(!ch) break; }
-  const maxL=Math.max(0,...N.map(n=>layer[n.id]));
-  const cols={}; N.forEach(n=>{ (cols[layer[n.id]] ||= []).push(n); });
-
-  const GAPX=64, GAPY=26;
-  const colW={}; for(const L in cols) colW[L]=Math.max(...cols[L].map(n=>n.w));
-  const rowH=Math.max(...N.map(n=>n.h)); const step=rowH+GAPY;
-  // x centers from cumulative column widths
-  const cx={}; let x=0; for(let L=0;L<=maxL;L++){ const w=colW[L]||80; cx[L]=x+w/2; x+=w+GAPX; }
-  // initial ty then barycenter ordering
-  for(const L in cols) cols[L].forEach((n,i)=>n.ty=i*step);
-  for(let p=0;p<8;p++) for(const L in cols){ const arr=cols[L];
-    arr.forEach(n=>{ const ns=nb[n.id].map(id=>byId[id]).filter(Boolean); n._b=ns.length?ns.reduce((s,m)=>s+m.ty,0)/ns.length:n.ty; });
-    arr.sort((a,b)=>a._b-b._b);
-    arr.forEach((n,i)=>n.ty=(i-(arr.length-1)/2)*step);
+function laneRank(role){
+  const lanes=MODE_LANES[DATA?.mode]||MODE_LANES.explanatory;
+  const i=lanes.indexOf(role);
+  return i>=0 ? i : lanes.length;
+}
+function sequenceRank(n){
+  if(n.graph_kind==="context"){
+    const entity=contextById[n.context_id];
+    const target=entity?.attach_to?.[0];
+    const idx=target ? SPINE.indexOf(target) : -1;
+    return (idx>=0 ? idx : SPINE.length) + .18;
   }
-  N.forEach(n=>{ n.tx=cx[layer[n.id]]; n.fixed=false; });
+  const i=SPINE.indexOf(n.id);
+  if(i>=0) return i;
+  const before=DATA.nodes.filter(m=>SPINE.includes(m.id) && (m.source_start ?? 0) <= (n.source_start ?? 1e9)).length;
+  return Math.min(SPINE.length, before) + .35;
+}
+function layout(fit){
+  const lanes=MODE_LANES[DATA?.mode]||MODE_LANES.explanatory;
+  const laneGap=86, colGap=190;
+  N.forEach(n=>{
+    const sr=sequenceRank(n);
+    const lr=laneRank(n.role);
+    const laneOffset=(lr-(lanes.length-1)/2)*laneGap;
+    const supportOffset=n.graph_kind==="context" ? laneGap*.72 : SPINE.includes(n.id) ? 0 : ((DATA.nodes.indexOf(byDataId(n.id)) % 3)-1)*18;
+    n.tx=sr*colGap;
+    n.ty=laneOffset + supportOffset;
+    n.fixed=false;
+  });
   if(fit){ N.forEach(n=>{ n.x=n.tx; n.y=n.ty; }); position(); fitView(); }
   animateTo();
 }
@@ -195,14 +1098,14 @@ function animateTo(){
   f();
 }
 
-// ---- view transform (zoom / pan) -----------------------------------------
-function applyView(){ vp.setAttribute("transform",`translate(${view.x},${view.y}) scale(${view.s})`); }
+function applyView(){ if(vp) vp.setAttribute("transform",`translate(${view.x},${view.y}) scale(${view.s})`); }
 function fitView(){
-  if(!N.length) return;
+  if(!N.length || !svg) return;
+  measure();
   let minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
   for(const n of N){ minX=Math.min(minX,n.tx-n.w/2); maxX=Math.max(maxX,n.tx+n.w/2); minY=Math.min(minY,n.ty-n.h/2); maxY=Math.max(maxY,n.ty+n.h/2); }
-  const wW=Math.max(1,maxX-minX), wH=Math.max(1,maxY-minY), pad=36;
-  view.s=Math.max(0.25,Math.min(1.4,Math.min((VW-2*pad)/wW,(VH-2*pad)/wH)));
+  const wW=Math.max(1,maxX-minX), wH=Math.max(1,maxY-minY), pad=44;
+  view.s=Math.max(0.22,Math.min(1.2,Math.min((VW-2*pad)/wW,(VH-2*pad)/wH)));
   view.x=(VW-wW*view.s)/2 - minX*view.s; view.y=(VH-wH*view.s)/2 - minY*view.s;
   applyView();
 }
@@ -211,8 +1114,8 @@ function zoomAt(px,py,factor){
   view.x=px-(px-view.x)*k; view.y=py-(py-view.y)*k; view.s=ns; applyView();
 }
 
-// ---- render --------------------------------------------------------------
 function draw(){
+  if(!svg) return;
   svg.innerHTML="";
   const defs=document.createElementNS(NS,"defs");
   defs.innerHTML=`<marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker>`;
@@ -222,8 +1125,10 @@ function draw(){
     const line=document.createElementNS(NS,"path"); line.setAttribute("class","edge"); line.setAttribute("stroke",EDGE_COLORS[e.type]||"#8a887f");
     if(DASHED.has(e.type)) line.setAttribute("stroke-dasharray","5 4");
     line.setAttribute("marker-end","url(#arr)");
-    const t=document.createElementNS(NS,"title"); t.textContent=e.type; line.appendChild(t);
+    const t=document.createElementNS(NS,"title"); t.textContent=relationLabel(e.type); line.appendChild(t);
     e.el=line; vp.appendChild(line);
+    const label=document.createElementNS(NS,"text"); label.setAttribute("class","edge-label"); label.setAttribute("text-anchor","middle"); label.textContent=relationLabel(e.type);
+    e.labelEl=label; vp.appendChild(label);
   }
   for(const n of N){
     const g=document.createElementNS(NS,"g"); g.setAttribute("class","node-pill");
@@ -231,20 +1136,42 @@ function draw(){
     const tx=document.createElementNS(NS,"text"); tx.setAttribute("text-anchor","middle"); tx.setAttribute("fill",color(n.role));
     const top=-(n.lines.length-1)*8;
     n.lines.forEach((ln,i)=>{ const ts=document.createElementNS(NS,"tspan"); ts.setAttribute("x",0); ts.setAttribute("y",top+i*16+4); ts.textContent=ln; tx.appendChild(ts); });
-    const ti=document.createElementNS(NS,"title"); ti.textContent=n.role+": "+(n.label||""); g.appendChild(ti);
+    const ti=document.createElementNS(NS,"title"); ti.textContent=roleName(n.role||"node")+": "+(n.label||""); g.appendChild(ti);
     g.appendChild(rect); g.appendChild(tx);
+    const rank=nodeIndex(n.id);
+    if(rank>=0){
+      const c=document.createElementNS(NS,"circle"); c.setAttribute("cx",-n.w/2+12); c.setAttribute("cy",-n.h/2+12); c.setAttribute("r",9); c.setAttribute("fill",color(n.role));
+      const rt=document.createElementNS(NS,"text"); rt.setAttribute("class","node-rank"); rt.setAttribute("x",-n.w/2+12); rt.setAttribute("y",-n.h/2+15); rt.setAttribute("text-anchor","middle"); rt.textContent=rank+1;
+      g.appendChild(c); g.appendChild(rt);
+    }
     g.addEventListener("pointerdown",(ev)=>startDrag(ev,n));
     n.el=g; vp.appendChild(g);
   }
   position();
+  applyEdgeFilter();
 }
 function position(){
-  for(const e of E){ const a=e.a,b=e.b; let dx=b.x-a.x,dy=b.y-a.y; let d=Math.sqrt(dx*dx+dy*dy)||1; const ux=dx/d,uy=dy/d; const oa=trim(a,ux,uy), ob=trim(b,-ux,-uy); e.el.setAttribute("d",`M${a.x+oa.x},${a.y+oa.y} L${b.x+ob.x},${b.y+ob.y}`); }
+  for(const e of E){
+    const a=e.a,b=e.b; let dx=b.x-a.x,dy=b.y-a.y; let d=Math.sqrt(dx*dx+dy*dy)||1; const ux=dx/d,uy=dy/d; const oa=trim(a,ux,uy), ob=trim(b,-ux,-uy);
+    const x1=a.x+oa.x, y1=a.y+oa.y, x2=b.x+ob.x, y2=b.y+ob.y;
+    e.el.setAttribute("d",`M${x1},${y1} L${x2},${y2}`);
+    if(e.labelEl){ e.labelEl.setAttribute("x",(x1+x2)/2); e.labelEl.setAttribute("y",(y1+y2)/2-5); }
+  }
   for(const n of N) n.el.setAttribute("transform",`translate(${n.x},${n.y})`);
 }
 function trim(n,ux,uy){ const hw=n.w/2, hh=n.h/2; const tx=ux===0?1e6:hw/Math.abs(ux), ty=uy===0?1e6:hh/Math.abs(uy); const t=Math.min(tx,ty)+4; return { x:ux*t, y:uy*t }; }
 
-// ---- interaction ---------------------------------------------------------
+function applyEdgeFilter(){
+  const f=$("edge-filter").value || "all";
+  const spinePairs=new Set();
+  for(let i=0;i<SPINE.length-1;i++) spinePairs.add(SPINE[i]+"→"+SPINE[i+1]);
+  E.forEach(e=>{
+    const show = f==="all" || e.type===f || (f==="spine" && spinePairs.has(e.from+"→"+e.to));
+    if(e.el) e.el.classList.toggle("hidden", !show);
+    if(e.labelEl) e.labelEl.classList.toggle("hidden", !show);
+  });
+}
+
 function toWorld(e){ const r=svg.getBoundingClientRect(); return { x:(e.clientX-r.left-view.x)/view.s, y:(e.clientY-r.top-view.y)/view.s }; }
 let moved=0;
 function startDrag(ev,n){
@@ -253,12 +1180,10 @@ function startDrag(ev,n){
   const up=()=>{ svg.removeEventListener("pointermove",move); svg.removeEventListener("pointerup",up); n.fixed=false; if(moved<4) select(n); };
   svg.addEventListener("pointermove",move); svg.addEventListener("pointerup",up);
 }
-// pan + zoom on the canvas background
 function bindCanvas(){
   $("graph").addEventListener("pointerdown",(e)=>{
     if(e.target.closest && e.target.closest(".node-pill")) return;
-    // deselect
-    N.forEach(m=>m.el&&m.el.classList.remove("dim")); E.forEach(x=>x.el&&x.el.classList.remove("dim")); sel=null; detail(null); $("src-text").textContent=RAW;
+    N.forEach(m=>m.el&&m.el.classList.remove("dim")); E.forEach(x=>{ x.el&&x.el.classList.remove("dim"); x.labelEl&&x.labelEl.classList.remove("dim"); }); sel=null; detail(null); renderSource();
     const sx=e.clientX, sy=e.clientY, ox=view.x, oy=view.y; svg.classList.add("panning"); svg.setPointerCapture(e.pointerId);
     const move=(ev)=>{ view.x=ox+(ev.clientX-sx); view.y=oy+(ev.clientY-sy); applyView(); };
     const up=()=>{ svg.removeEventListener("pointermove",move); svg.removeEventListener("pointerup",up); svg.classList.remove("panning"); };
@@ -267,27 +1192,42 @@ function bindCanvas(){
   $("graph").addEventListener("wheel",(e)=>{ e.preventDefault(); const r=svg.getBoundingClientRect(); zoomAt(e.clientX-r.left, e.clientY-r.top, e.deltaY<0?1.12:0.89); }, {passive:false});
 }
 
-function select(n){
+function select(n, doHighlight=true){
   sel=n; const keep=new Set([n.id]); E.forEach(e=>{ if(e.from===n.id)keep.add(e.to); if(e.to===n.id)keep.add(e.from); });
   N.forEach(m=>m.el.classList.toggle("dim", !keep.has(m.id)));
   E.forEach(e=>e.el.classList.toggle("dim", e.from!==n.id && e.to!==n.id));
-  detail(n); highlight(n);
+  E.forEach(e=>e.labelEl&&e.labelEl.classList.toggle("dim", e.from!==n.id && e.to!==n.id));
+  if(n.graph_kind==="context" && n.context_id){ selectedContextId=n.context_id; renderContext(); }
+  detail(n); if(doHighlight) highlight(n);
 }
 function detail(n){
   const d=$("detail");
-  if(!n){ d.innerHTML='<span class="none">Click any node to see its role and the exact sentence it came from.</span>'; return; }
+  if(!n){ d.innerHTML='<span class="none">No node selected.</span>'; return; }
+  if(n.graph_kind==="context" && n.context_id){
+    const entity=contextById[n.context_id];
+    if(entity){
+      const meta=[interpretationLabel(entity.interpretation_status), entity.narrative_function, attachedContextIds.has(entity.id) ? "user attached" : ""].filter(Boolean).join(" · ");
+      d.innerHTML = `${badge(entity.kind || "context")} ${esc(entity.label)}${meta?`<span class="none"> · ${esc(meta)}</span>`:""}<div class="q">${esc(entity.explanation || "")}</div>`;
+      return;
+    }
+  }
   const g = n.grounding==="unpinned" ? '<span class="none"> · source not located</span>' : n.grounding==="weak" ? '<span class="none"> · weak match</span>' : '';
-  d.innerHTML = `<span class="role" style="background:${color(n.role)}">${esc(n.role||"")}</span> ${esc(n.label||"")}${g}<div class="q">${n.quote?'“'+esc(n.quote)+'”':''}</div>`;
+  d.innerHTML = `${badge(n.role)} ${esc(n.label||"")}${g}<div class="q">${n.quote?'“'+esc(n.quote)+'”':''}</div>`;
 }
 function highlight(n){
   const src=$("src-text");
-  if(n.source_start==null||n.source_end==null){ src.textContent=RAW; return; }
-  const s=n.source_start,e=n.source_end;
-  src.innerHTML=esc(RAW.slice(0,s))+'<mark>'+esc(RAW.slice(s,e))+'</mark>'+esc(RAW.slice(e));
+  if(n.graph_kind==="context" && n.context_id) selectedContextId=n.context_id;
+  if(n.source_start==null||n.source_end==null){ renderSource(); return; }
+  renderSource({ source_start:n.source_start, source_end:n.source_end });
   const m=src.querySelector("mark"); if(m)m.scrollIntoView({behavior:"smooth",block:"center"});
 }
 
-// ---- controls ------------------------------------------------------------
+function setActiveTab(tab, refit=true){
+  activeTab=tab;
+  document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active", b.dataset.tab===tab));
+  document.querySelectorAll(".tab-panel").forEach(p=>p.classList.toggle("active", p.id==="tab-"+tab));
+  if(tab==="graph" && refit) requestAnimationFrame(()=>{ measure(); fitView(); applyEdgeFilter(); });
+}
 function toggleFull(){
   const p=$("map-pane"); p.classList.toggle("expanded");
   $("full").textContent = p.classList.contains("expanded") ? "🗗" : "⛶";
@@ -301,11 +1241,16 @@ $("zin").onclick=()=>zoomAt(VW/2,VH/2,1.2);
 $("zout").onclick=()=>zoomAt(VW/2,VH/2,0.83);
 $("zfit").onclick=()=>{ measure(); fitView(); };
 $("full").onclick=toggleFull;
-$("reset").onclick=()=>{ if(raf)cancelAnimationFrame(raf); $("map-pane").classList.remove("expanded"); $("view").style.display="none"; $("input-view").style.display="block"; $("go").disabled=false; $("hint").textContent="Detects whether it's an argument, a story, or an explainer — and maps it with the right roles."; };
+$("reset").onclick=startNew;
+$("voice-toggle").onclick=()=>{ voiceOverlay=!voiceOverlay; updateVoiceToggle(); renderSource(); renderVoice(); };
+$("new-run-home").onclick=startNew;
+$("new-run-view").onclick=startNew;
+document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>setActiveTab(b.dataset.tab)));
 document.querySelectorAll(".samples a").forEach(a=>a.onclick=()=>{ $("text").value=SAMPLES[a.dataset.s]; });
 $("text").addEventListener("keydown",(e)=>{ if((e.metaKey||e.ctrlKey)&&e.key==="Enter") run(); });
 document.addEventListener("keydown",(e)=>{ if(e.key==="Escape" && $("map-pane").classList.contains("expanded")) toggleFull(); });
 bindCanvas();
+refreshRuns();
 </script>
 </body>
 </html>
