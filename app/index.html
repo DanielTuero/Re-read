@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Re-read — prototype</title>
+<style>
+  :root {
+    --bg:#faf9f6; --surface:#fff; --ink:#1c1b19; --muted:#6b6a64; --line:#e6e4dc;
+    --accent:#2f6f5e; --tension:#b4541f; --tension-bg:#fbf0e8;
+    --pin:#3b7d4f; --weak:#b8860b; --unpin:#9a9890; --markbg:#fbe7a2;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font:16px/1.6 -apple-system,Segoe UI,Roboto,sans-serif; color:var(--ink); background:var(--bg); }
+  header { padding:18px 24px; border-bottom:1px solid var(--line); display:flex; align-items:baseline; gap:14px; }
+  header h1 { margin:0; font-size:19px; font-weight:600; letter-spacing:-.01em; }
+  header .tag { color:var(--muted); font-size:13px; }
+  header .model { margin-left:auto; color:var(--unpin); font-size:12px; }
+  main { max-width:1180px; margin:0 auto; padding:24px; }
+
+  /* input view */
+  #input-view textarea {
+    width:100%; min-height:240px; padding:16px; font:15px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;
+    color:var(--ink); background:var(--surface); border:1px solid var(--line); border-radius:10px; resize:vertical;
+  }
+  .row { display:flex; gap:12px; align-items:center; margin-top:12px; }
+  button { font:500 14px/1 inherit; padding:10px 18px; border-radius:8px; border:1px solid var(--line);
+    background:var(--accent); color:#fff; cursor:pointer; }
+  button.ghost { background:transparent; color:var(--ink); }
+  button:disabled { opacity:.5; cursor:default; }
+  .hint { color:var(--muted); font-size:13px; }
+  .samples { margin-top:18px; font-size:13px; color:var(--muted); }
+  .samples a { color:var(--accent); cursor:pointer; text-decoration:underline; margin-right:14px; }
+
+  /* split view */
+  #split { display:none; grid-template-columns:1fr 1fr; gap:20px; }
+  .pane { background:var(--surface); border:1px solid var(--line); border-radius:10px; height:calc(100vh - 190px); overflow:auto; }
+  .pane h2 { margin:0; padding:12px 16px; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.05em;
+    color:var(--muted); border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--surface); }
+  #src-text { padding:16px 18px; white-space:pre-wrap; font-size:15px; }
+  mark { background:var(--markbg); border-radius:3px; padding:1px 0; }
+
+  #out { padding:8px 14px 24px; }
+  .thesis { margin:10px 4px 16px; padding:14px 16px; background:#eef4f1; border:1px solid #d4e4dd; border-radius:9px; }
+  .thesis .lbl { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:var(--accent); }
+  .thesis .t { font-size:16px; font-weight:500; margin-top:4px; }
+  .claim { margin:6px 0; padding:9px 12px; border:1px solid var(--line); border-radius:8px; cursor:pointer; background:var(--surface); }
+  .claim:hover { border-color:#cfcdc4; }
+  .claim.sel { border-color:var(--accent); box-shadow:0 0 0 2px rgba(47,111,94,.15); }
+  .claim.tension { background:var(--tension-bg); border-color:#ecd3c2; }
+  .claim .ct { font-size:14.5px; }
+  .claim .meta { display:flex; align-items:center; gap:8px; margin-top:5px; font-size:11.5px; color:var(--muted); }
+  .chip { font-size:10.5px; font-weight:600; padding:2px 7px; border-radius:5px; text-transform:uppercase; letter-spacing:.03em; }
+  .chip.tension { background:#f3dccd; color:var(--tension); }
+  .chip.supports { background:#e2ece8; color:var(--accent); }
+  .dot { width:7px; height:7px; border-radius:50%; display:inline-block; }
+  .g-pinned .dot{ background:var(--pin);} .g-weak .dot{ background:var(--weak);} .g-unpinned .dot{ background:var(--unpin);}
+  .children { margin-left:18px; border-left:2px solid var(--line); padding-left:10px; }
+  .quote { margin-top:5px; font-size:12px; color:var(--unpin); font-style:italic; }
+  .err { color:#b00; padding:12px; }
+  .spin { display:inline-block; width:14px; height:14px; border:2px solid var(--line); border-top-color:var(--accent);
+    border-radius:50%; animation:s .7s linear infinite; vertical-align:-2px; }
+  @keyframes s { to { transform:rotate(360deg);} }
+  .legend { font-size:11.5px; color:var(--muted); padding:0 4px 10px; display:flex; gap:14px; flex-wrap:wrap; }
+  .legend span { display:inline-flex; align-items:center; gap:5px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Re-read</h1>
+  <span class="tag">A summary tells you what the text says. This shows you what it depends on.</span>
+  <span class="model" id="model"></span>
+</header>
+<main>
+  <div id="input-view">
+    <textarea id="text" placeholder="Paste an article, essay, paper, report, email thread, or transcript…"></textarea>
+    <div class="row">
+      <button id="go">Map it</button>
+      <span class="hint" id="hint">Extracts the thesis, supporting claims, and the buried caveats — each clickable to its source.</span>
+    </div>
+    <div class="samples">Try: <a data-s="ai">AI coding productivity</a><a data-s="remote">remote work</a></div>
+  </div>
+
+  <div id="split">
+    <div class="pane">
+      <h2>Source</h2>
+      <div id="src-text"></div>
+    </div>
+    <div class="pane">
+      <h2>Argument map <button class="ghost" id="reset" style="float:right;margin:-4px 0;padding:5px 10px;font-size:12px;">↺ New text</button></h2>
+      <div class="legend">
+        <span class="g-pinned"><span class="dot"></span>source pinned</span>
+        <span class="g-weak"><span class="dot"></span>weak match</span>
+        <span class="g-unpinned"><span class="dot"></span>source not located</span>
+        <span><span class="chip tension" style="padding:1px 6px">tension</span>caveat / contradiction</span>
+      </div>
+      <div id="out"></div>
+    </div>
+  </div>
+</main>
+
+<script>
+const SAMPLES = {
+  ai: `Everyone assumes AI coding assistants make engineers faster, but the evidence is messier than the hype. A randomized trial found that experienced developers actually completed familiar tasks 19% slower when using AI, even though they reported feeling faster. The likely reason is review overhead: the time saved generating code is spent reading and correcting unfamiliar suggestions. The gains seem to concentrate among junior developers, who benefit from having a tireless pair programmer. That said, the tools are improving rapidly, and today's friction may not last. The deeper point is that productivity depends on context — a greenfield project and a mature codebase you know cold are completely different situations.`,
+  remote: `The debate over remote work usually treats it as a single thing that is either good or bad for productivity, which is the wrong frame. Studies that found productivity gains mostly measured individual output on well-defined tasks. Studies that found losses tended to measure collaboration, mentorship, and the diffuse work of building shared context. Both can be true at once. Remote work also interacts with seniority: experienced employees who already have networks thrive, while new hires who need to absorb tacit knowledge struggle. The honest conclusion is that remote work redistributes who bears the cost, rather than simply raising or lowering a single productivity number.`
+};
+
+const $ = (id) => document.getElementById(id);
+let RAW = "";
+
+function esc(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+async function run(){
+  const text = $("text").value.trim();
+  if(!text){ return; }
+  $("go").disabled = true;
+  $("hint").innerHTML = '<span class="spin"></span> reading the argument…';
+  try {
+    const res = await fetch("/api/extract", { method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({text}) });
+    const data = await res.json();
+    if(data.error) throw new Error(data.error);
+    RAW = text;
+    render(data);
+  } catch(e){
+    $("hint").innerHTML = '<span class="err">'+esc(e.message)+'</span>';
+    $("go").disabled = false;
+  }
+}
+
+function render(data){
+  $("model").textContent = data.model || "";
+  $("input-view").style.display = "none";
+  $("split").style.display = "grid";
+  $("src-text").textContent = RAW;
+
+  const out = $("out");
+  out.innerHTML = "";
+  if(data.thesis){
+    const th = document.createElement("div");
+    th.className = "thesis";
+    th.innerHTML = '<div class="lbl">Thesis</div><div class="t"></div>';
+    th.querySelector(".t").textContent = data.thesis;
+    out.appendChild(th);
+  }
+  const claims = data.claims || [];
+  const byId = {}; claims.forEach(c => byId[c.id]=c);
+  const roots = claims.filter(c => c.role==="thesis" || !c.parent_id || !byId[c.parent_id]);
+  const childrenOf = (id) => claims.filter(c => c.parent_id===id && c.id!==id);
+
+  function node(c){
+    const el = document.createElement("div");
+    el.className = "claim g-"+(c.grounding||"unpinned") + (c.relation_to_parent==="tension"?" tension":"");
+    el.dataset.id = c.id;
+    const rel = c.relation_to_parent;
+    const chip = rel ? '<span class="chip '+rel+'">'+rel+'</span>' : '';
+    el.innerHTML =
+      '<div class="ct"></div>'+
+      '<div class="meta"><span class="dot"></span>'+chip+
+        '<span>'+(c.grounding==="unpinned"?"source not located":c.grounding==="weak"?"weak source match":"click to see source")+'</span></div>'+
+      '<div class="quote"></div>';
+    el.querySelector(".ct").textContent = c.text || "(claim)";
+    el.querySelector(".quote").textContent = c.source_quote ? '“'+c.source_quote+'”' : '';
+    el.onclick = (ev) => { ev.stopPropagation(); select(c, el); };
+    const kids = childrenOf(c.id);
+    if(kids.length){
+      const wrap = document.createElement("div"); wrap.className = "children";
+      kids.forEach(k => wrap.appendChild(node(k)));
+      const holder = document.createElement("div"); holder.appendChild(el); holder.appendChild(wrap);
+      return holder;
+    }
+    return el;
+  }
+  // render thesis-role node's children at top level too
+  const seen = new Set();
+  roots.forEach(r => { out.appendChild(node(r)); seen.add(r.id); });
+  // any orphans
+  claims.filter(c => !seen.has(c.id) && (!c.parent_id || !byId[c.parent_id])).forEach(c => out.appendChild(node(c)));
+}
+
+function select(c, el){
+  document.querySelectorAll(".claim.sel").forEach(n => n.classList.remove("sel"));
+  el.classList.add("sel");
+  const src = $("src-text");
+  if(c.source_start==null || c.source_end==null){
+    src.textContent = RAW; // no span to show
+    return;
+  }
+  const s=c.source_start, e=c.source_end;
+  src.innerHTML = esc(RAW.slice(0,s)) + '<mark>' + esc(RAW.slice(s,e)) + '</mark>' + esc(RAW.slice(e));
+  const m = src.querySelector("mark");
+  if(m) m.scrollIntoView({ behavior:"smooth", block:"center" });
+}
+
+$("go").onclick = run;
+$("reset").onclick = () => { $("split").style.display="none"; $("input-view").style.display="block"; $("go").disabled=false; $("hint").textContent="Extracts the thesis, supporting claims, and the buried caveats — each clickable to its source."; };
+document.querySelectorAll(".samples a").forEach(a => a.onclick = () => { $("text").value = SAMPLES[a.dataset.s]; });
+$("text").addEventListener("keydown", (e)=>{ if((e.metaKey||e.ctrlKey)&&e.key==="Enter") run(); });
+</script>
+</body>
+</html>
