@@ -18,9 +18,10 @@ premise/support chain you walk when you trace an argument to where it breaks.
 ## The shape
 
 ### Left pane
-- Paste an article.
-- Render paragraphs with **stable character offsets** (this is what makes grounding possible — do
-  it first, get it right).
+- A plain **paste box** — drop in any text (article, essay, paper, report, email thread, transcript;
+  no URL fetch or parsing in V1).
+- On submit, render the pasted text into paragraphs with **stable character offsets** (this is what
+  makes grounding possible — do it first, get it right).
 - Highlight the source span when a claim is selected.
 
 ### Right pane
