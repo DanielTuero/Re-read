@@ -43,6 +43,7 @@ This is the thinking/brainstorm space for the product, not the codebase (yet).
 | [`Brainstorm/argument-map-v1.md`](Brainstorm/argument-map-v1.md) | The sharp V1 cut — what to build first, what to deliberately skip, the one risk to test. **Start here.** |
 | [`Brainstorm/v1-build-plan.md`](Brainstorm/v1-build-plan.md) | The concrete first build — split-pane prototype, the two-pass backend, and the `Claim` schema. The bridge to actual code. |
 | [`Brainstorm/linking-architecture.md`](Brainstorm/linking-architecture.md) | **The heart of the system** — how Re-read connects things: concept-layer retrieval + a logic/dialectic layer that follows inference chains and surfaces contradictions neither source stated. |
+| [`Brainstorm/logic-contract.md`](Brainstorm/logic-contract.md) | The governance rules for the logic layer — when the system is *allowed* to say supports / depends-on / contradicts / undermines / only-seems-related. Proposition normalization, the scope/modality contradiction gate, warrants, and the eval set. |
 | [`Brainstorm/feasibility-report.md`](Brainstorm/feasibility-report.md) | The long-horizon architecture (constrained decoding, RST parsing, multi-agent debate, PageRank, cross-document entity resolution, UI/UX). The destination, not the first build. |
 
 ## Status

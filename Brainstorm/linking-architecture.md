@@ -5,6 +5,8 @@
 > contradictions that neither source stated on its own.
 >
 > Companion docs: [argument-map-v1.md](argument-map-v1.md) (the first build),
+> [logic-contract.md](logic-contract.md) (the governance rules for *when* an edge is allowed to
+> exist — the exact rules behind Layer 2 below),
 > [feasibility-report.md](feasibility-report.md) (the long-horizon architecture).
 
 ---
