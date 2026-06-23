@@ -1,16 +1,15 @@
 # Re-read
 
-> Turn the internet from a feed into a map.
+> **A summary tells you what the article says. Re-read shows you what the article _depends on_.**
 
 An AI-native reading layer that turns a dense article into a navigable, **source-linked
 structure of claims** — not a summary, not a glossary of terms, but the argument itself:
 thesis, supporting claims, evidence, and the buried caveats and contradictions, each one
 clickable back to the exact sentence that supports it.
 
-A summary answers *"what does it say."*
-Re-read answers *"how does it hang together — where does this claim come from, what holds it
-up, what undercuts it."* It preserves all of an article's structure and hides the volume in
-folds you can open.
+A summary gives you the conclusion. Re-read gives you the load-bearing structure under it —
+where each claim comes from, what holds it up, what undercuts it — and hides the volume in
+folds you can open. Turn the internet from a feed into a map.
 
 ## Why
 
@@ -42,6 +41,7 @@ This is the thinking/brainstorm space for the product, not the codebase (yet).
 | File | What it is |
 |------|------------|
 | [`Brainstorm/argument-map-v1.md`](Brainstorm/argument-map-v1.md) | The sharp V1 cut — what to build first, what to deliberately skip, the one risk to test. **Start here.** |
+| [`Brainstorm/v1-build-plan.md`](Brainstorm/v1-build-plan.md) | The concrete first build — split-pane prototype, the two-pass backend, and the `Claim` schema. The bridge to actual code. |
 | [`Brainstorm/linking-architecture.md`](Brainstorm/linking-architecture.md) | **The heart of the system** — how Re-read connects things: concept-layer retrieval + a logic/dialectic layer that follows inference chains and surfaces contradictions neither source stated. |
 | [`Brainstorm/feasibility-report.md`](Brainstorm/feasibility-report.md) | The long-horizon architecture (constrained decoding, RST parsing, multi-agent debate, PageRank, cross-document entity resolution, UI/UX). The destination, not the first build. |
 
