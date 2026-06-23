@@ -110,6 +110,24 @@
   .spine-chip strong{ display:block; color:var(--ink); font-size:13px; line-height:1.3; }
   .spine-chip span{ display:block; color:var(--muted); font-size:11px; margin-top:2px; text-transform:uppercase; letter-spacing:.05em; }
   .arrow{ color:var(--soft); font-size:17px; }
+  .passage-title{ font-size:22px; font-weight:720; letter-spacing:-.01em; margin:0 0 8px; line-height:1.2; }
+  .beat-flow{ display:grid; gap:0; margin-top:6px; }
+  .beat-card{ width:100%; max-width:560px; text-align:left; border:1px solid var(--line); border-left:6px solid var(--accent); border-radius:14px; background:#fffdf8; box-shadow:0 6px 18px rgba(40,32,20,.05); padding:14px 16px; cursor:pointer; display:grid; gap:8px; }
+  .beat-card:hover{ border-color:var(--line-strong); }
+  .beat-arrow{ color:var(--soft); font-size:18px; line-height:1; margin-left:26px; padding:3px 0; }
+  .beat-top{ display:flex; align-items:center; gap:9px; }
+  .beat-num{ width:22px; height:22px; border-radius:999px; background:var(--ink); color:#fff; font-size:12px; font-weight:720; display:flex; align-items:center; justify-content:center; }
+  .role-badge{ display:inline-flex; align-items:center; border-radius:999px; padding:3px 9px; font-size:11px; font-weight:720; letter-spacing:.04em; text-transform:uppercase; }
+  .beat-label{ font-size:15px; line-height:1.4; font-weight:600; }
+  .beat-label + .beat-label{ margin-top:2px; }
+  .beat-quote{ font-family:Georgia,"Times New Roman",serif; font-size:14px; color:#6f675d; line-height:1.5; }
+  .beat-chips{ display:flex; flex-wrap:wrap; gap:6px; }
+  .context-chip{ border:1px solid rgba(60,50,40,.16); border-radius:999px; background:#fffaf0; padding:4px 9px; font-size:12px; color:var(--ink); cursor:pointer; }
+  .context-chip:hover{ background:#f3ece0; }
+  .pressure-card{ max-width:560px; border:1px solid #e0c5b8; background:#fff7f2; border-radius:14px; padding:14px 16px; margin-top:12px; }
+  .pressure-card h3{ margin:0 0 8px; color:var(--danger); font-size:12px; text-transform:uppercase; letter-spacing:.06em; }
+  .pressure-arc{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:14px; padding:3px 0; }
+  .pressure-arc .rel{ color:var(--danger); font-weight:650; font-size:11.5px; text-transform:uppercase; letter-spacing:.04em; }
   .role-spine{ display:grid; gap:10px; margin-top:14px; }
   .role-step{ border:1px solid var(--line); border-left:6px solid var(--accent); border-radius:8px; background:#fffefa; padding:12px; display:grid; grid-template-columns:116px minmax(0,1fr); gap:12px; align-items:start; cursor:pointer; }
   .role-step .step-role{ color:var(--muted); font-size:11px; font-weight:760; text-transform:uppercase; letter-spacing:.05em; }
@@ -286,7 +304,7 @@
         <button class="tab" data-tab="voice">Voice</button>
         <button class="tab" data-tab="questions">Questions</button>
         <button class="tab" data-tab="audit">Audit</button>
-        <button class="tab" data-tab="graph">Graph</button>
+        <button class="tab" data-tab="graph">Full graph</button>
       </nav>
       <div class="panel-shell">
         <section class="tab-panel active" id="tab-understand"></section>
@@ -340,6 +358,7 @@ function voiceTypeLabel(t){ const m={ direct_speech:"Direct speech", internal_th
 function speakerInitials(name){ const parts=String(name||"?").trim().split(/\s+/); return ((parts[0]?.[0]||"")+(parts.length>1?parts[parts.length-1][0]:"")).toUpperCase() || "?"; }
 const DASHED  = new Set(["contradicts","contrasts","foreshadows","qualifies","fails_to_resolve","leaves_unresolved","undercuts","undercut_by","residual_concern"]);
 const TENSION_TYPES = new Set(["contradicts","contrasts","qualifies","foreshadows","fails_to_resolve","leaves_unresolved","undercuts","undercut_by","residual_concern"]);
+const PRESSURE_TYPES = new Set(["undercuts","undercut_by","fails_to_resolve","leaves_unresolved","residual_concern","contradicts","contrasts","qualifies"]);
 const MODE_LANES = {
   argument:["thesis","claim","evidence","assumption","counterpoint","consequence","definition","cause"],
   narrative:["setting","trigger","reaction","action","denial","rationalization","avoidance","residual_anxiety","turn","character","motivation","event","detail"],
@@ -643,34 +662,81 @@ function selectContext(id){
   setActiveTab("context");
 }
 
+function entitiesByNodeMap(){
+  const map={};
+  CTX.forEach(entity=>(entity.attach_to||[]).forEach(id=>{ (map[id] ||= []).push(entity.id); }));
+  return map;
+}
+function deriveBeats(){
+  const entitiesByNode=entitiesByNodeMap();
+  let path=SPINE.map(id=>DATA.nodes.find(n=>n.id===id)).filter(Boolean);
+  if(path.length<2) path=[...DATA.nodes].sort((a,b)=>(a.source_start ?? 1e9)-(b.source_start ?? 1e9));
+  const beats=[];
+  for(const n of path){
+    const prev=beats[beats.length-1];
+    if(prev && prev.role===n.role) prev.nodeIds.push(n.id);
+    else beats.push({ id:"b"+beats.length, role:n.role, nodeIds:[n.id] });
+  }
+  return beats.map(b=>{
+    const nodes=b.nodeIds.map(id=>DATA.nodes.find(n=>n.id===id)).filter(Boolean);
+    const quote=nodes.map(n=>n.quote).find(Boolean) || "";
+    const contextIds=[...new Set(b.nodeIds.flatMap(id=>entitiesByNode[id]||[]))];
+    return { ...b, nodes, quote, contextIds };
+  });
+}
+function beatForNode(beats,id){ return beats.find(b=>b.nodeIds.includes(id)); }
+function pressureArcs(beats){
+  const seen=new Set();
+  return DATA.edges.filter(e=>PRESSURE_TYPES.has(e.type)).map(e=>{
+    const fb=beatForNode(beats,e.from), tb=beatForNode(beats,e.to);
+    const fromLabel=fb?roleName(fb.role):(DATA.nodes.find(n=>n.id===e.from)?.label || e.from);
+    const toLabel=tb?roleName(tb.role):(DATA.nodes.find(n=>n.id===e.to)?.label || e.to);
+    return { fromLabel, toLabel, type:e.type };
+  }).filter(a=>{
+    if(a.fromLabel===a.toLabel) return false;
+    const key=a.fromLabel+"|"+a.type+"|"+a.toLabel;
+    if(seen.has(key)) return false; seen.add(key); return true;
+  });
+}
 function renderUnderstand(){
   const s=DATA.summary || {};
-  const spineNodes=SPINE.map(id=>DATA.nodes.find(n=>n.id===id)).filter(Boolean);
-  const highContext=CTX.filter(entity=>entity.importance==="high").slice(0,5);
+  const beats=deriveBeats();
+  const arcs=pressureArcs(beats);
+  const highContext=CTX.filter(entity=>entity.importance==="high").slice(0,6);
+  const beatsHtml=beats.map((b,i)=>`
+    ${i?'<div class="beat-arrow">↓</div>':""}
+    <div class="beat-card" data-node="${attr(b.nodes[0]?.id || "")}" style="border-left-color:${color(b.role)}">
+      <div class="beat-top"><span class="beat-num">${i+1}</span><span class="role-badge" style="background:${color(b.role)}22;color:${color(b.role)}">${esc(roleName(b.role))}</span></div>
+      <div>${b.nodes.map(n=>`<div class="beat-label">${esc(n.label)}</div>`).join("")}</div>
+      ${b.quote?`<div class="beat-quote">“${esc(b.quote)}”</div>`:""}
+      ${b.contextIds.length?`<div class="beat-chips">${b.contextIds.map(id=>{ const e=contextById[id]; return e?`<button class="context-chip" data-context="${attr(id)}">${esc(e.label)}</button>`:""; }).join("")}</div>`:""}
+    </div>`).join("");
+  const pressureHtml=(arcs.length || s.tension) ? `
+    <div class="pressure-card">
+      <h3>${esc(modeCopy("tension"))}</h3>
+      ${s.tension?`<p style="margin:0 ${arcs.length?'0 10px':'0'};font-size:15px">${esc(s.tension)}</p>`:""}
+      ${arcs.map(a=>`<div class="pressure-arc"><span>${esc(a.fromLabel)}</span><span class="rel">${esc(relationLabel(a.type))}</span><span class="arrow">→</span><span>${esc(a.toLabel)}</span></div>`).join("")}
+    </div>` : "";
   $("tab-understand").innerHTML = `
     <div class="lens-stack">
       <article class="reading-card primary">
+        ${DATA.title?`<div class="passage-title">${esc(DATA.title)}</div>`:""}
         <h3>${esc(modeCopy("doing"))}</h3>
         <p>${esc(s.doing || "No interpretation returned.")}</p>
       </article>
       <article class="reading-card">
         <h3>${esc(modeCopy("flow"))}</h3>
-        <div class="spine-row">
-          ${spineNodes.map((n,i)=>`${i?'<span class="arrow">→</span>':""}<button class="spine-chip" data-node="${attr(n.id)}"><strong>${esc(n.label)}</strong><span>${esc(roleName(n.role))}</span></button>`).join("") || '<p class="empty">No spine returned.</p>'}
-        </div>
+        ${beats.length?`<div class="beat-flow">${beatsHtml}</div>`:'<p class="empty">No spine returned.</p>'}
+        ${pressureHtml}
       </article>
       <article class="reading-card">
         <h3>${esc(modeCopy("matters"))}</h3>
         <p>${esc(s.matters || "No stakes returned.")}</p>
       </article>
-      <article class="reading-card">
-        <h3>${esc(modeCopy("tension"))}</h3>
-        <p>${s.tension ? esc(s.tension) : '<span class="empty">No central tension extracted.</span>'}</p>
-      </article>
-      ${highContext.length ? `<article class="reading-card"><h3>Context that matters</h3><div class="spine-row">${highContext.map(entity=>`<button class="spine-chip" data-context="${attr(entity.id)}"><strong>${esc(entity.label)}</strong><span>${esc(entity.narrative_function || roleName(entity.kind || "context"))}</span></button>`).join("")}</div></article>` : ""}
+      ${highContext.length ? `<article class="reading-card"><h3>Context that matters</h3><div class="beat-chips">${highContext.map(entity=>`<button class="context-chip" data-context="${attr(entity.id)}">${esc(entity.label)}</button>`).join("")}</div></article>` : ""}
     </div>`;
-  bindNodeButtons($("tab-understand"));
-  bindContextButtons($("tab-understand"));
+  $("tab-understand").querySelectorAll(".beat-card").forEach(el=>el.addEventListener("click",()=>focusNode(el.dataset.node)));
+  $("tab-understand").querySelectorAll("[data-context]").forEach(el=>el.addEventListener("click",(e)=>{ e.stopPropagation(); selectContext(el.dataset.context); }));
 }
 
 function renderContext(){
