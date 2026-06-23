@@ -32,41 +32,42 @@
   .pane h2{ margin:0; padding:11px 15px; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); border-bottom:1px solid var(--line); display:flex; align-items:center; gap:8px; }
   #src-text{ padding:14px 16px; white-space:pre-wrap; font-size:14.5px; overflow:auto; flex:1; }
   mark{ background:var(--markbg); border-radius:3px; }
-  #graph{ flex:1; width:100%; touch-action:none; cursor:grab; }
+  #graph{ flex:1; width:100%; touch-action:none; cursor:default; }
   .node-pill{ cursor:pointer; }
   .node-pill rect{ stroke-width:1.5; }
   .node-pill text{ font:500 12px/1 -apple-system,Segoe UI,sans-serif; pointer-events:none; }
   .edge{ fill:none; stroke-width:1.6; }
-  .edge.dim,.node-pill.dim{ opacity:.18; }
-  .elabel{ font:500 9.5px/1 sans-serif; fill:#8a887f; pointer-events:none; }
+  .edge.dim,.node-pill.dim{ opacity:.16; }
   .legend{ display:flex; flex-wrap:wrap; gap:5px 12px; padding:8px 14px; border-top:1px solid var(--line); font-size:11px; color:var(--muted); }
   .legend i{ width:9px; height:9px; border-radius:3px; display:inline-block; margin-right:4px; vertical-align:-1px; }
   #detail{ padding:10px 15px; border-top:1px solid var(--line); font-size:13px; min-height:64px; }
   #detail .role{ font-size:10.5px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; padding:2px 7px; border-radius:5px; color:#fff; }
   #detail .q{ color:var(--muted); font-style:italic; margin-top:6px; }
   #detail .none{ color:#9a9890; }
+  .tbtn{ margin-left:auto; padding:4px 10px; font-size:11px; }
 </style>
 </head>
 <body>
 <header>
   <h1>Re-read</h1>
-  <span class="tag">A web of how the ideas connect — each node by its role in the text.</span>
+  <span class="tag">A web of how the ideas connect — laid out as the flow of reasoning.</span>
   <span class="model" id="model"></span>
 </header>
 <main>
   <div id="input-view">
     <textarea id="text" placeholder="Paste an article, essay, paper, report, email thread, or transcript…"></textarea>
     <div class="row"><button id="go">Map it</button><span class="hint" id="hint">Builds an idea-web: claims, evidence, counterpoints, causes — connected by how they relate.</span></div>
-    <div class="samples">Try: <a data-s="transit">city transit debate</a><a data-s="ai">AI coding productivity</a></div>
+    <div class="samples">Try: <a data-s="transit">city transit debate</a><a data-s="ai">AI power concentration</a></div>
   </div>
 
   <div id="view">
     <div class="pane">
-      <h2>Source <button class="ghost" id="reset" style="margin-left:auto;padding:4px 9px;font-size:11px;">↺ New</button></h2>
+      <h2>Source <button class="ghost tbtn" id="reset">↺ New</button></h2>
       <div id="src-text"></div>
     </div>
     <div class="pane">
-      <h2>Idea web <span class="hint" style="font-weight:400;text-transform:none;letter-spacing:0">drag nodes · click to see source</span></h2>
+      <h2>Idea web <span class="hint" style="font-weight:400;text-transform:none;letter-spacing:0">flows left → right · drag to rearrange</span>
+        <button class="ghost tbtn" id="tidy">⤢ Tidy</button></h2>
       <svg id="graph"></svg>
       <div class="legend" id="legend"></div>
       <div id="detail"><span class="none">Click any node to see its role and the exact sentence it came from.</span></div>
@@ -77,7 +78,7 @@
 <script>
 const SAMPLES = {
   transit:`Some people argue that cities should invest more in public transportation because it reduces traffic, lowers pollution, and makes daily life easier for people who cannot afford cars. A strong train or bus system can connect neighborhoods, help workers reach jobs, and make the city feel more accessible. Others argue that cities should prioritize roads and parking because many people still depend on cars for flexibility, especially families, small businesses, and those who live far from transit lines. In this view, improving roads is not anti-environmental; it is simply a practical response to how people actually move through the city.`,
-  ai:`Everyone assumes AI coding assistants make engineers faster, but the evidence is messier than the hype. A randomized trial found that experienced developers actually completed familiar tasks 19% slower when using AI, even though they reported feeling faster. The likely reason is review overhead: the time saved generating code is spent reading and correcting unfamiliar suggestions. The gains seem to concentrate among junior developers. That said, the tools are improving rapidly, and today's friction may not last. The deeper point is that productivity depends on context.`
+  ai:`Advanced AI requires massive compute, which only a few large companies can afford. This concentrates power in the hands of a few firms, and that concentration increases society's dependency on them. Defenders counter that AI also democratizes expertise: it helps students, small businesses, and non-experts do things that once required specialists. So the same technology both centralizes infrastructure and decentralizes capability.`
 };
 
 const ROLE_COLORS = {
@@ -87,7 +88,7 @@ const ROLE_COLORS = {
 const EDGE_COLORS = { supports:"#2f8a5e", contradicts:"#c0392b", causes:"#2f6f9e", explains:"#8a887f", elaborates:"#8a887f", exemplifies:"#8a887f", qualifies:"#b8860b" };
 const $ = (id)=>document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
-let RAW="", N=[], E=[], svg, W=600, H=460, raf=0, alpha=1, sel=null;
+let RAW="", N=[], E=[], svg, W=600, H=460, raf=0, sel=null, byId={};
 
 function esc(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 function color(role){ return ROLE_COLORS[role] || "#6b6a64"; }
@@ -112,15 +113,13 @@ function build(data){
   svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
 
   const ids=new Set(data.nodes.map(n=>n.id));
-  N = data.nodes.map((n,i)=>({ ...n, w:pillW(n.label||"node"),
-    x:W/2 + Math.cos(i/data.nodes.length*6.283)*Math.min(W,H)*0.3 + (Math.random()-.5)*40,
-    y:H/2 + Math.sin(i/data.nodes.length*6.283)*Math.min(W,H)*0.3 + (Math.random()-.5)*40, vx:0, vy:0, fixed:false }));
+  N = data.nodes.map((n)=>({ ...n, w:pillW(n.label||"node"), x:W/2+(Math.random()-.5)*30, y:H/2+(Math.random()-.5)*30, fixed:false }));
   E = (data.edges||[]).filter(e=>ids.has(e.from)&&ids.has(e.to));
-  const byId={}; N.forEach(n=>byId[n.id]=n);
+  byId={}; N.forEach(n=>byId[n.id]=n);
   E.forEach(e=>{ e.a=byId[e.from]; e.b=byId[e.to]; });
 
-  legend(); draw(true); sel=null; detail(null);
-  alpha=1; if(raf)cancelAnimationFrame(raf); tick();
+  legend(); draw(); sel=null; detail(null);
+  layout();
 }
 
 function legend(){
@@ -131,22 +130,42 @@ function legend(){
     usedE.map(t=>`<span><i style="background:${EDGE_COLORS[t]||'#8a887f'};border-radius:1px;height:3px;width:14px"></i>${t}</span>`).join("");
 }
 
-// ---- force layout --------------------------------------------------------
-function tick(){
-  const REP=11000, SPRING=0.018, LEN=128, CENTER=0.018, DAMP=0.85;
-  for(let i=0;i<N.length;i++) for(let j=i+1;j<N.length;j++){
-    const a=N[i],b=N[j]; let dx=a.x-b.x, dy=a.y-b.y; let d2=dx*dx+dy*dy+0.01; let d=Math.sqrt(d2);
-    const f=REP/d2; const fx=f*dx/d, fy=f*dy/d;
-    a.vx+=fx; a.vy+=fy; b.vx-=fx; b.vy-=fy;
+// ---- layered (left -> right) layout following the flow of reasoning ------
+function layout(){
+  const flow = E.filter(e=>e.type!=="contradicts");      // these define direction
+  const inOf={}, nb={}; N.forEach(n=>{ inOf[n.id]=[]; nb[n.id]=[]; });
+  flow.forEach(e=>{ inOf[e.to].push(e.from); });
+  E.forEach(e=>{ nb[e.from].push(e.to); nb[e.to].push(e.from); });
+
+  // longest-path layering: layer = max(layer of predecessors)+1
+  const layer={}; N.forEach(n=>layer[n.id]=0);
+  for(let it=0; it<N.length+1; it++){ let ch=false;
+    flow.forEach(e=>{ if(layer[e.to] < layer[e.from]+1){ layer[e.to]=layer[e.from]+1; ch=true; } });
+    if(!ch) break; }
+  const maxL = Math.max(0, ...N.map(n=>layer[n.id]));
+
+  const cols={}; N.forEach(n=>{ (cols[layer[n.id]] ||= []).push(n); });
+  const colW = maxL>0 ? (W-200)/maxL : 0;
+  // initial vertical order, then barycenter passes to line up neighbours
+  Object.values(cols).forEach(arr=>arr.forEach((n,i)=>{ n.ty=(i+1)/(arr.length+1)*H; }));
+  for(let p=0;p<8;p++){
+    for(const L in cols){ const arr=cols[L];
+      arr.forEach(n=>{ const ns=nb[n.id].map(id=>byId[id]).filter(Boolean);
+        n._b = ns.length ? ns.reduce((s,m)=>s+m.ty,0)/ns.length : n.ty; });
+      arr.sort((a,b)=>a._b-b._b);
+      arr.forEach((n,i)=>{ n.ty=(i+1)/(arr.length+1)*H; });
+    }
   }
-  for(const e of E){ const a=e.a,b=e.b; let dx=b.x-a.x,dy=b.y-a.y; let d=Math.sqrt(dx*dx+dy*dy)||1;
-    const f=(d-LEN)*SPRING; const fx=f*dx/d, fy=f*dy/d; a.vx+=fx; a.vy+=fy; b.vx-=fx; b.vy-=fy; }
-  for(const n of N){ n.vx+=(W/2-n.x)*CENTER; n.vy+=(H/2-n.y)*CENTER;
-    if(n.fixed){ n.vx=0; n.vy=0; continue; }
-    n.vx*=DAMP; n.vy*=DAMP; n.x+=n.vx*alpha*1.2; n.y+=n.vy*alpha*1.2;
-    n.x=Math.max(n.w/2+6,Math.min(W-n.w/2-6,n.x)); n.y=Math.max(22,Math.min(H-22,n.y)); }
-  position();
-  alpha*=0.985; if(alpha>0.03) raf=requestAnimationFrame(tick);
+  N.forEach(n=>{ n.tx = 100 + layer[n.id]*colW; n.fixed=false; });
+  animateTo();
+}
+
+function animateTo(){
+  if(raf)cancelAnimationFrame(raf);
+  const stepF=()=>{ let done=true;
+    for(const n of N){ if(n.fixed) continue; const dx=n.tx-n.x, dy=n.ty-n.y; n.x+=dx*0.22; n.y+=dy*0.22; if(Math.abs(dx)+Math.abs(dy)>0.6) done=false; }
+    position(); if(!done) raf=requestAnimationFrame(stepF); else raf=0; };
+  stepF();
 }
 
 // ---- render --------------------------------------------------------------
@@ -174,7 +193,7 @@ function draw(){
     const ti=document.createElementNS(NS,"title"); ti.textContent=(n.role+": "+(n.label||"")); g.appendChild(ti);
     g.appendChild(rect); g.appendChild(tx);
     g.addEventListener("pointerdown",(ev)=>startDrag(ev,n,g));
-    n.el=g; n.rectEl=rect; svg.appendChild(g);
+    n.el=g; svg.appendChild(g);
   }
   position();
 }
@@ -187,25 +206,21 @@ function position(){
   }
   for(const n of N) n.el.setAttribute("transform",`translate(${n.x},${n.y})`);
 }
-function trim(n,ux,uy){ // offset from node center to pill edge along (ux,uy)
-  const hw=n.w/2, hh=14; const tx=ux===0?1e6:hw/Math.abs(ux), ty=uy===0?1e6:hh/Math.abs(uy); const t=Math.min(tx,ty)+4;
-  return { x:ux*t, y:uy*t };
-}
+function trim(n,ux,uy){ const hw=n.w/2, hh=14; const tx=ux===0?1e6:hw/Math.abs(ux), ty=uy===0?1e6:hh/Math.abs(uy); const t=Math.min(tx,ty)+4; return { x:ux*t, y:uy*t }; }
 
 // ---- interaction ---------------------------------------------------------
-let drag=null, moved=0;
+let moved=0;
 function startDrag(ev,n,g){
-  ev.preventDefault(); drag=n; n.fixed=true; moved=0; svg.setPointerCapture(ev.pointerId);
-  svg.style.cursor="grabbing";
-  const move=(e)=>{ const p=toSvg(e); moved+=Math.abs(p.x-n.x)+Math.abs(p.y-n.y); n.x=p.x; n.y=p.y; alpha=Math.max(alpha,0.35); if(!raf)tick(); position(); };
-  const up=(e)=>{ svg.removeEventListener("pointermove",move); svg.removeEventListener("pointerup",up); n.fixed=false; svg.style.cursor="grab"; if(moved<4) select(n); drag=null; };
+  ev.preventDefault(); n.fixed=true; moved=0; svg.setPointerCapture(ev.pointerId); svg.style.cursor="grabbing";
+  const move=(e)=>{ const p=toSvg(e); moved+=Math.abs(p.x-n.x)+Math.abs(p.y-n.y); n.x=p.x; n.y=p.y; n.tx=p.x; n.ty=p.y; position(); };
+  const up=()=>{ svg.removeEventListener("pointermove",move); svg.removeEventListener("pointerup",up); n.fixed=false; svg.style.cursor="default"; if(moved<4) select(n); };
   svg.addEventListener("pointermove",move); svg.addEventListener("pointerup",up);
 }
 function toSvg(e){ const r=svg.getBoundingClientRect(); return { x:(e.clientX-r.left)*W/r.width, y:(e.clientY-r.top)*H/r.height }; }
 
 function select(n){
-  sel=n; const nb=new Set([n.id]); E.forEach(e=>{ if(e.from===n.id)nb.add(e.to); if(e.to===n.id)nb.add(e.from); });
-  N.forEach(m=>m.el.classList.toggle("dim", !nb.has(m.id)));
+  sel=n; const keep=new Set([n.id]); E.forEach(e=>{ if(e.from===n.id)keep.add(e.to); if(e.to===n.id)keep.add(e.from); });
+  N.forEach(m=>m.el.classList.toggle("dim", !keep.has(m.id)));
   E.forEach(e=>e.el.classList.toggle("dim", e.from!==n.id && e.to!==n.id));
   detail(n); highlight(n);
 }
@@ -223,9 +238,9 @@ function highlight(n){
   const m=src.querySelector("mark"); if(m)m.scrollIntoView({behavior:"smooth",block:"center"});
 }
 
-svg && 0;
 $("graph").addEventListener("pointerdown",(e)=>{ if(e.target.id==="graph"||e.target.tagName==="svg"){ N.forEach(m=>m.el&&m.el.classList.remove("dim")); E.forEach(x=>x.el&&x.el.classList.remove("dim")); sel=null; detail(null); $("src-text").textContent=RAW; } });
 $("go").onclick=run;
+$("tidy").onclick=()=>{ if(N.length) layout(); };
 $("reset").onclick=()=>{ if(raf)cancelAnimationFrame(raf); $("view").style.display="none"; $("input-view").style.display="block"; $("go").disabled=false; $("hint").textContent="Builds an idea-web: claims, evidence, counterpoints, causes — connected by how they relate."; };
 document.querySelectorAll(".samples a").forEach(a=>a.onclick=()=>{ $("text").value=SAMPLES[a.dataset.s]; });
 $("text").addEventListener("keydown",(e)=>{ if((e.metaKey||e.ctrlKey)&&e.key==="Enter") run(); });
